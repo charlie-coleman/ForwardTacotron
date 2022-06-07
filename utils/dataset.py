@@ -153,6 +153,22 @@ def get_tts_datasets(path: Path,
     train_data = filter_max_len(train_data, max_mel_len)
     val_data = filter_max_len(val_data, max_mel_len)
 
+    train_len_original = len(train_data)
+
+    if model_type == 'forward' and filter_attention:
+        attention_score_dict = unpickle_binary(path/'att_score_dict.pkl')
+        train_data = filter_bad_attentions(dataset=train_data,
+                                           attention_score_dict=attention_score_dict,
+                                           min_alignment=filter_min_alignment,
+                                           min_sharpness=filter_min_sharpness)
+        val_data = filter_bad_attentions(dataset=val_data,
+                                         attention_score_dict=attention_score_dict,
+                                         min_alignment=filter_min_alignment,
+                                         min_sharpness=filter_min_sharpness)
+        print(f'Using {len(train_data)} train files. '
+              f'Filtered {train_len_original - len(train_data)} files due to bad attention!')
+
+
     speaker_dict = unpickle_binary(path/'speaker_dict.pkl')
 
     train_data_bild = []
@@ -172,20 +188,6 @@ def get_tts_datasets(path: Path,
     print(f'Using {len(train_data_bild[:num_bild])} bild data and {len(train_data_other[:num_other])} other data.\nFirst bild ids:')
     print(train_data_bild[:10])
 
-    train_len_original = len(train_data)
-
-    if model_type == 'forward' and filter_attention:
-        attention_score_dict = unpickle_binary(path/'att_score_dict.pkl')
-        train_data = filter_bad_attentions(dataset=train_data,
-                                           attention_score_dict=attention_score_dict,
-                                           min_alignment=filter_min_alignment,
-                                           min_sharpness=filter_min_sharpness)
-        val_data = filter_bad_attentions(dataset=val_data,
-                                         attention_score_dict=attention_score_dict,
-                                         min_alignment=filter_min_alignment,
-                                         min_sharpness=filter_min_sharpness)
-        print(f'Using {len(train_data)} train files. '
-              f'Filtered {train_len_original - len(train_data)} files due to bad attention!')
 
     train_ids, train_lens = zip(*train_data)
     val_ids, val_lens = zip(*val_data)
