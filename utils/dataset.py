@@ -1,3 +1,5 @@
+from random import Random
+
 import torch
 from torch.utils.data.sampler import Sampler
 from torch.utils.data import Dataset, DataLoader
@@ -138,7 +140,9 @@ def get_tts_datasets(path: Path,
                      filter_attention=True,
                      filter_min_alignment=0.5,
                      filter_min_sharpness=0.9,
-                     model_type='tacotron') -> Tuple[DataLoader, DataLoader]:
+                     model_type='tacotron',
+                     num_bild=1000,
+                     num_other=1000) -> Tuple[DataLoader, DataLoader]:
 
     tokenizer = Tokenizer()
 
@@ -148,6 +152,26 @@ def get_tts_datasets(path: Path,
 
     train_data = filter_max_len(train_data, max_mel_len)
     val_data = filter_max_len(val_data, max_mel_len)
+
+    speaker_dict = unpickle_binary(path/'speaker_dict.pkl')
+
+    train_data_bild = []
+    train_data_other = []
+
+    random = Random(42)
+    for id, l in train_data:
+        if speaker_dict[id] == 'bild':
+            train_data_bild.append((id, l))
+        else:
+            train_data_other.append((id, l))
+
+    random.shuffle(train_data_bild)
+    random.shuffle(train_data_other)
+    train_data = train_data_bild[:num_bild] + train_data_other[:num_other]
+
+    print(f'Using {len(train_data_bild)} bild data and {len(train_data_other)} other data.\nFirst bild ids:')
+    print(train_data_bild[:10])
+
     train_len_original = len(train_data)
 
     if model_type == 'forward' and filter_attention:

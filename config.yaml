@@ -1,6 +1,6 @@
 
 voc_model_id: 'ljspeech_voc'
-tts_model_id: 'bild_multispeaker_resemblyzer_2'
+tts_model_id: 'bild_multispeaker_0'
 data_path: 'data/'                                        # output data path
 
 tts_model: 'forward_tacotron'                             # choices: [forward_tacotron, fast_pitch]
@@ -45,6 +45,8 @@ preprocessing:
   min_text_len: 2
   extract_durations_with_dijkstra: True    # slower but much more robust than simply counting attention peaks
 
+  num_bild: 0
+  num_other: 999999
 
 tacotron:
 
