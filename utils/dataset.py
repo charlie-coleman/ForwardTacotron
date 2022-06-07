@@ -176,7 +176,7 @@ def get_tts_datasets(path: Path,
 
     random = Random(42)
     for id, l in train_data:
-        if speaker_dict[id] == 'asvoice':
+        if speaker_dict[id] == '04_training_metafile':
             train_data_asvoice.append((id, l))
         else:
             train_data_other.append((id, l))
