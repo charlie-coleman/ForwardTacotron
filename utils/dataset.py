@@ -169,7 +169,7 @@ def get_tts_datasets(path: Path,
     random.shuffle(train_data_other)
     train_data = train_data_bild[:num_bild] + train_data_other[:num_other]
 
-    print(f'Using {len(train_data_bild[:num_bild])} bild data and {len(train_data_other[:num_bild])} other data.\nFirst bild ids:')
+    print(f'Using {len(train_data_bild[:num_bild])} bild data and {len(train_data_other[:num_other])} other data.\nFirst bild ids:')
     print(train_data_bild[:10])
 
     train_len_original = len(train_data)
