@@ -141,8 +141,8 @@ def get_tts_datasets(path: Path,
                      filter_min_alignment=0.5,
                      filter_min_sharpness=0.9,
                      model_type='tacotron',
-                     num_asvoice=1000,
-                     num_other=1000) -> Tuple[DataLoader, DataLoader]:
+                     num_asvoice=9999999,
+                     num_other=999999) -> Tuple[DataLoader, DataLoader]:
 
     tokenizer = Tokenizer()
 
