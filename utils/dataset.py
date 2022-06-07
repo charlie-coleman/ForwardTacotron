@@ -141,7 +141,7 @@ def get_tts_datasets(path: Path,
                      filter_min_alignment=0.5,
                      filter_min_sharpness=0.9,
                      model_type='tacotron',
-                     num_bild=1000,
+                     num_asvoice=1000,
                      num_other=1000) -> Tuple[DataLoader, DataLoader]:
 
     tokenizer = Tokenizer()
@@ -171,23 +171,22 @@ def get_tts_datasets(path: Path,
 
     speaker_dict = unpickle_binary(path/'speaker_dict.pkl')
 
-    train_data_bild = []
+    train_data_asvoice = []
     train_data_other = []
 
     random = Random(42)
     for id, l in train_data:
-        if speaker_dict[id] == 'bild':
-            train_data_bild.append((id, l))
+        if speaker_dict[id] == 'asvoice':
+            train_data_asvoice.append((id, l))
         else:
             train_data_other.append((id, l))
 
-    random.shuffle(train_data_bild)
+    random.shuffle(train_data_asvoice)
     random.shuffle(train_data_other)
-    train_data = train_data_bild[:num_bild] + train_data_other[:num_other]
+    train_data = train_data_asvoice[:num_asvoice] + train_data_other[:num_other]
 
-    print(f'Using {len(train_data_bild[:num_bild])} bild data and {len(train_data_other[:num_other])} other data.\nFirst bild ids:')
-    print(train_data_bild[:10])
-
+    print(f'Using {len(train_data_asvoice[:num_asvoice])} asvoice data and {len(train_data_other[:num_other])} other data.\nFirst bild ids:')
+    print(train_data_asvoice[:10])
 
     train_ids, train_lens = zip(*train_data)
     val_ids, val_lens = zip(*val_data)

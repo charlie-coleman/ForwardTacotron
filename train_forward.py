@@ -117,7 +117,7 @@ if __name__ == '__main__':
         train_set, val_set = get_tts_datasets(
             paths.data, 8, r=1, model_type='forward',
             filter_attention=False, max_mel_len=None,
-            num_bild=config['preprocessing']['num_bild'], num_other=config['preprocessing']['num_other'])
+            num_asvoice=config['preprocessing']['num_asvoice'], num_other=config['preprocessing']['num_other'])
         create_gta_features(model, train_set, val_set, paths.gta)
         print('\n\nYou can now train WaveRNN on GTA features - use python train_wavernn.py --gta\n')
     else:
