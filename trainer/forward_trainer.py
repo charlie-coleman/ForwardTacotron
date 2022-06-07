@@ -44,7 +44,7 @@ class ForwardTrainer:
                     filter_attention=self.train_cfg['filter_attention'],
                     filter_min_alignment=self.train_cfg['min_attention_alignment'],
                     filter_min_sharpness=self.train_cfg['min_attention_sharpness'],
-                    num_asvoice=self.config['preprocessing']['num_bild'],
+                    num_asvoice=self.config['preprocessing']['num_asvoice'],
                     num_other=self.config['preprocessing']['num_other'])
                 session = TTSSession(
                     index=i, r=1, lr=lr, max_step=max_step,
