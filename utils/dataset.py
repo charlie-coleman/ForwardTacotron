@@ -142,16 +142,16 @@ def get_tts_datasets(path: Path,
 
     tokenizer = Tokenizer()
 
-    train_data = unpickle_binary(path/'train_dataset.pkl')
-    val_data = unpickle_binary(path/'val_dataset.pkl')
-    text_dict = unpickle_binary(path/'text_dict.pkl')
+    train_data = unpickle_binary(path/'train_dataset_vctk_multi.pkl')
+    val_data = unpickle_binary(path/'val_dataset_vctk_multi.pkl')
+    text_dict = unpickle_binary(path/'text_dict_vctk_multi.pkl')
 
     train_data = filter_max_len(train_data, max_mel_len)
     val_data = filter_max_len(val_data, max_mel_len)
     train_len_original = len(train_data)
 
     if model_type == 'forward' and filter_attention:
-        attention_score_dict = unpickle_binary(path/'att_score_dict.pkl')
+        attention_score_dict = unpickle_binary(path/'att_score_dict_vctk_multi.pkl')
         train_data = filter_bad_attentions(dataset=train_data,
                                            attention_score_dict=attention_score_dict,
                                            min_alignment=filter_min_alignment,
