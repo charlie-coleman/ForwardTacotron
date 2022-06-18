@@ -208,27 +208,28 @@ class ForwardTrainer:
             tag='Ground_Truth_Aligned/postnet_wav', snd_tensor=m2_hat_wav,
             global_step=model.step, sample_rate=self.dsp.sample_rate)
 
-        gen = model.generate(batch['x'][0:1, :batch['x_len'][0]], mel=batch['mel'][0:1, ...])
-        m1_hat = np_now(gen['mel'].squeeze())
-        m2_hat = np_now(gen['mel_post'].squeeze())
+        for i in range(10):
+            gen = model.generate(batch['x'][0:1, :batch['x_len'][0]], mel=batch['mel'][i:i+1, ...])
+            m1_hat = np_now(gen['mel'].squeeze())
+            m2_hat = np_now(gen['mel_post'].squeeze())
 
-        m1_hat_fig = plot_mel(m1_hat)
-        m2_hat_fig = plot_mel(m2_hat)
+            m1_hat_fig = plot_mel(m1_hat)
+            m2_hat_fig = plot_mel(m2_hat)
 
-        pitch_gen_fig = plot_pitch(np_now(gen['pitch'].squeeze()))
-        energy_gen_fig = plot_pitch(np_now(gen['energy'].squeeze()))
+            pitch_gen_fig = plot_pitch(np_now(gen['pitch'].squeeze()))
+            energy_gen_fig = plot_pitch(np_now(gen['energy'].squeeze()))
 
-        self.writer.add_figure('Pitch/generated', pitch_gen_fig, model.step)
-        self.writer.add_figure('Energy/generated', energy_gen_fig, model.step)
-        self.writer.add_figure('Generated/target', m_target_fig, model.step)
-        self.writer.add_figure('Generated/linear', m1_hat_fig, model.step)
-        self.writer.add_figure('Generated/postnet', m2_hat_fig, model.step)
+            self.writer.add_figure(f'Pitch/{i}_generated', pitch_gen_fig, model.step)
+            self.writer.add_figure(f'Energy/{i}_generated', energy_gen_fig, model.step)
+            self.writer.add_figure(f'Generated/{i}_target', m_target_fig, model.step)
+            self.writer.add_figure(f'Generated/{i}_linear', m1_hat_fig, model.step)
+            self.writer.add_figure(f'Generated/{i}_postnet', m2_hat_fig, model.step)
 
-        m2_hat_wav = self.dsp.griffinlim(m2_hat)
+            m2_hat_wav = self.dsp.griffinlim(m2_hat)
 
-        self.writer.add_audio(
-            tag='Generated/target_wav', snd_tensor=target_wav,
-            global_step=model.step, sample_rate=self.dsp.sample_rate)
-        self.writer.add_audio(
-            tag='Generated/postnet_wav', snd_tensor=m2_hat_wav,
-            global_step=model.step, sample_rate=self.dsp.sample_rate)
+            self.writer.add_audio(
+                tag=f'Generated/target_wav', snd_tensor=target_wav,
+                global_step=model.step, sample_rate=self.dsp.sample_rate)
+            self.writer.add_audio(
+                tag=f'Generated/{i}_postnet_wav', snd_tensor=m2_hat_wav,
+                global_step=model.step, sample_rate=self.dsp.sample_rate)
