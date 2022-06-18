@@ -15,7 +15,7 @@ from utils.text.symbols import phonemes
 
 class MelEncoder(nn.Module):
 
-    def __init__(self, mel_dim, emb_dim=64, conv_dims=256, rnn_dims=64):
+    def __init__(self, mel_dim, conv_dims=256, rnn_dims=64, emb_dims=64):
         super().__init__()
         self.convs = torch.nn.ModuleList([
             BatchNormConv(mel_dim, conv_dims, 3, relu=True),
@@ -23,16 +23,16 @@ class MelEncoder(nn.Module):
             BatchNormConv(conv_dims, conv_dims, 3, relu=True),
         ])
         self.rnn = nn.LSTM(conv_dims, rnn_dims, batch_first=True, bidirectional=False)
-        self.lin = nn.Linear(2 * rnn_dims, 1)
+        self.lin = nn.Linear(rnn_dims, emb_dims)
 
     def forward(self,
                 x: torch.Tensor) -> torch.Tensor:
         for conv in self.convs:
             x = conv(x)
-            x = F.dropout(x, p=self.dropout, training=self.training)
         x = x.transpose(1, 2)
         _, (x, _) = self.rnn(x)
         x = self.lin(x[-1])
+        x = torch.relu(x)
         return x
 
 
@@ -59,9 +59,6 @@ class SeriesPredictor(nn.Module):
                 alpha: float = 1.0) -> torch.Tensor:
         x = self.embedding(x)
         lemb = self.lang_embedding(lang_ind)
-        memb = self.mel_encoder(mel)
-        memb = memb[:, None, :]
-        memb = memb.repeat(1, x.shape[1], 1)
         x = torch.cat([x, lemb], dim=2)
         x = x.transpose(1, 2)
         for conv in self.convs:
@@ -69,6 +66,9 @@ class SeriesPredictor(nn.Module):
             x = F.dropout(x, p=self.dropout, training=self.training)
         x = x.transpose(1, 2)
         x, _ = self.rnn(x)
+        memb = self.mel_encoder(mel)
+        memb = memb[:, None, :]
+        memb = memb.repeat(1, x.shape[1], 1)
         x = torch.cat([x, memb], dim=-1)
         x = self.lin(x)
         return x / alpha
@@ -117,7 +117,7 @@ class ForwardTacotron(nn.Module):
                  prenet_num_highways: int,
                  postnet_dropout: float,
                  n_mels: int,
-                 semb_dims: int = 256,
+                 memb_dims: int = 256,
                  padding_value=-11.5129):
         super().__init__()
         self.rnn_dims = rnn_dims
@@ -145,7 +145,7 @@ class ForwardTacotron(nn.Module):
                            proj_channels=[prenet_dims, embed_dims + 32],
                            num_highways=prenet_num_highways,
                            dropout=prenet_dropout)
-        self.lstm = nn.LSTM(2 * prenet_dims + semb_dims,
+        self.lstm = nn.LSTM(2 * prenet_dims + memb_dims,
                             rnn_dims,
                             batch_first=True,
                             bidirectional=True)
@@ -161,9 +161,9 @@ class ForwardTacotron(nn.Module):
         self.pitch_strength = pitch_strength
         self.energy_strength = energy_strength
         self.lang_embedding = nn.Embedding(num_embeddings=2, embedding_dim=32)
-        self.pitch_proj = nn.Conv1d(1, 2 * prenet_dims + semb_dims, kernel_size=3, padding=1)
-        self.energy_proj = nn.Conv1d(1, 2 * prenet_dims + semb_dims, kernel_size=3, padding=1)
-        self.mel_encoder = MelEncoder(mel_dim=n_mels, rnn_dims=256)
+        self.pitch_proj = nn.Conv1d(1, 2 * prenet_dims + memb_dims, kernel_size=3, padding=1)
+        self.energy_proj = nn.Conv1d(1, 2 * prenet_dims + memb_dims, kernel_size=3, padding=1)
+        self.mel_encoder = MelEncoder(mel_dim=n_mels, rnn_dims=memb_dims, emb_dims=memb_dims)
 
 
     def __repr__(self):
