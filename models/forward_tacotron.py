@@ -19,9 +19,9 @@ class MelEncoder(nn.Module):
     def __init__(self, mel_dim, conv_dims=256, rnn_dims=64, emb_dims=64):
         super().__init__()
         self.convs = torch.nn.ModuleList([
-            BatchNormConv(mel_dim, conv_dims, 3, relu=True),
-            BatchNormConv(conv_dims, conv_dims, 3, relu=True),
-            BatchNormConv(conv_dims, conv_dims, 3, relu=True),
+            BatchNormConv(mel_dim, conv_dims, 5, relu=True),
+            BatchNormConv(conv_dims, conv_dims, 5, relu=True),
+            BatchNormConv(conv_dims, conv_dims, 5, relu=True),
         ])
         #self.rnn = nn.LSTM(conv_dims, rnn_dims, batch_first=True, bidirectional=False)
         self.lin = nn.Linear(conv_dims, emb_dims)
