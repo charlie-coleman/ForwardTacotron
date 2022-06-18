@@ -1,6 +1,6 @@
 
 voc_model_id: 'ljspeech_voc'
-tts_model_id: 'vctk_melencoder_lang'
+tts_model_id: 'vctk_melencoder_lang_mean'
 data_path: 'data_vctk'                                        # output data path
 
 tts_model: 'forward_tacotron'                             # choices: [forward_tacotron, fast_pitch]

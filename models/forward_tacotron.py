@@ -5,6 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.nn import Embedding
+from torch.nn.functional import avg_pool1d
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence
 
 from models.common_layers import CBHG, LengthRegulator
@@ -30,9 +31,10 @@ class MelEncoder(nn.Module):
         for conv in self.convs:
             x = conv(x)
         x = x.transpose(1, 2)
-        _, (x, _) = self.rnn(x)
-        x = self.lin(x[-1])
+        x, _ = self.rnn(x)
+        x = self.lin(x)
         x = torch.relu(x)
+        x = torch.mean(x, dim=1)
         return x
 
 
