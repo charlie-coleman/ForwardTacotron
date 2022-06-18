@@ -11,37 +11,65 @@ from models.common_layers import CBHG, LengthRegulator
 from utils.text.symbols import phonemes
 
 
+
+
+class MelEncoder(nn.Module):
+
+    def __init__(self, mel_dim, emb_dim=64, conv_dims=256, rnn_dims=64):
+        super().__init__()
+        self.convs = torch.nn.ModuleList([
+            BatchNormConv(mel_dim, conv_dims, 3, relu=True),
+            BatchNormConv(conv_dims, conv_dims, 3, relu=True),
+            BatchNormConv(conv_dims, conv_dims, 3, relu=True),
+        ])
+        self.rnn = nn.LSTM(conv_dims, rnn_dims, batch_first=True, bidirectional=False)
+        self.lin = nn.Linear(2 * rnn_dims, 1)
+
+    def forward(self,
+                x: torch.Tensor) -> torch.Tensor:
+        for conv in self.convs:
+            x = conv(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        x = x.transpose(1, 2)
+        _, (x, _) = self.rnn(x)
+        x = self.lin(x[-1])
+        return x
+
+
 class SeriesPredictor(nn.Module):
 
-    def __init__(self, num_chars, emb_dim=64, conv_dims=256, rnn_dims=64, dropout=0.5, semb_dims=256):
+    def __init__(self, num_chars, emb_dim=64, conv_dims=256, rnn_dims=64, dropout=0.5, memb_dims=64):
         super().__init__()
         self.lang_embedding = nn.Embedding(2, 32)
         self.embedding = Embedding(num_chars, emb_dim)
+        self.mel_encoder = MelEncoder(mel_dim=80, rnn_dims=memb_dims)
         self.convs = torch.nn.ModuleList([
-            BatchNormConv(emb_dim + semb_dims + 32, conv_dims, 5, relu=True),
+            BatchNormConv(emb_dim + 32, conv_dims, 5, relu=True),
             BatchNormConv(conv_dims, conv_dims, 5, relu=True),
             BatchNormConv(conv_dims, conv_dims, 5, relu=True),
         ])
         self.rnn = nn.GRU(conv_dims, rnn_dims, batch_first=True, bidirectional=True)
-        self.lin = nn.Linear(2 * rnn_dims, 1)
+        self.lin = nn.Linear(2 * rnn_dims + memb_dims, 1)
         self.dropout = dropout
 
     def forward(self,
                 x: torch.Tensor,
                 lang_ind: torch.Tensor,
-                semb: torch.Tensor,
+                mel: torch.Tensor,
                 alpha: float = 1.0) -> torch.Tensor:
         x = self.embedding(x)
         lemb = self.lang_embedding(lang_ind)
-        speaker_emb = semb[:, None, :]
-        speaker_emb = speaker_emb.repeat(1, x.shape[1], 1)
-        x = torch.cat([x, lemb, speaker_emb], dim=2)
+        memb = self.mel_encoder(mel)
+        memb = memb[:, None, :]
+        memb = memb.repeat(1, x.shape[1], 1)
+        x = torch.cat([x, lemb], dim=2)
         x = x.transpose(1, 2)
         for conv in self.convs:
             x = conv(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
         x = x.transpose(1, 2)
         x, _ = self.rnn(x)
+        x = torch.cat([x, memb], dim=-1)
         x = self.lin(x)
         return x / alpha
 
@@ -90,8 +118,7 @@ class ForwardTacotron(nn.Module):
                  postnet_dropout: float,
                  n_mels: int,
                  semb_dims: int = 256,
-                 padding_value=-11.5129,
-                 speaker_names: list = []):
+                 padding_value=-11.5129):
         super().__init__()
         self.rnn_dims = rnn_dims
         self.padding_value = padding_value
@@ -136,8 +163,8 @@ class ForwardTacotron(nn.Module):
         self.lang_embedding = nn.Embedding(num_embeddings=2, embedding_dim=32)
         self.pitch_proj = nn.Conv1d(1, 2 * prenet_dims + semb_dims, kernel_size=3, padding=1)
         self.energy_proj = nn.Conv1d(1, 2 * prenet_dims + semb_dims, kernel_size=3, padding=1)
-        for speaker_name in speaker_names:
-            self.register_buffer(speaker_name, torch.zeros(semb_dims, dtype=torch.float))
+        self.mel_encoder = MelEncoder(mel_dim=n_mels, rnn_dims=256)
+
 
     def __repr__(self):
         num_params = sum([np.prod(p.size()) for p in self.parameters()])
@@ -147,7 +174,6 @@ class ForwardTacotron(nn.Module):
         x = batch['x']
         mel = batch['mel']
         dur = batch['dur']
-        semb = batch['speaker_emb']
         mel_lens = batch['mel_len']
         pitch = batch['pitch'].unsqueeze(1)
         energy = batch['energy'].unsqueeze(1)
@@ -160,18 +186,20 @@ class ForwardTacotron(nn.Module):
         if self.training:
             self.step += 1
 
-        dur_hat = self.dur_pred(x, lang_ind, semb).squeeze(-1)
-        pitch_hat = self.pitch_pred(x, lang_ind, semb).transpose(1, 2)
-        energy_hat = self.energy_pred(x, lang_ind, semb).transpose(1, 2)
+        dur_hat = self.dur_pred(x, lang_ind, mel=mel).squeeze(-1)
+        pitch_hat = self.pitch_pred(x, lang_ind, mel=mel).transpose(1, 2)
+        energy_hat = self.energy_pred(x, lang_ind, mel=mel).transpose(1, 2)
 
         lemb = self.lang_embedding(lang_ind)
         x = self.embedding(x)
         x = torch.cat([x, lemb], dim=-1)
         x = x.transpose(1, 2)
         x = self.prenet(x)
-        speaker_emb = semb[:, None, :]
-        speaker_emb = speaker_emb.repeat(1, x.shape[1], 1)
-        x = torch.cat([x, speaker_emb], dim=2)
+
+        memb = self.mel_encoder(mel)
+        memb = memb[:, None, :]
+        memb = memb.repeat(1, x.shape[1], 1)
+        x = torch.cat([x, memb], dim=2)
 
         pitch_proj = self.pitch_proj(pitch)
         pitch_proj = pitch_proj.transpose(1, 2)
@@ -206,26 +234,26 @@ class ForwardTacotron(nn.Module):
     def generate(self,
                  x: torch.Tensor,
                  lang_ind: int = 0,
-                 semb: torch.Tensor = None,
+                 mel: torch.Tensor = None,
                  alpha=1.0,
                  pitch_function: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
                  energy_function: Callable[[torch.Tensor], torch.Tensor] = lambda x: x) -> Dict[str, torch.Tensor]:
         self.eval()
         with torch.no_grad():
             lang_inds = torch.full(x.size(), fill_value=lang_ind, device=x.device).long()
-            dur_hat = self.dur_pred(x, lang_inds, semb, alpha=alpha)
+            dur_hat = self.dur_pred(x, lang_inds, mel, alpha=alpha)
             dur_hat = dur_hat.squeeze(2)
             if torch.sum(dur_hat.long()) <= 0:
                 torch.fill_(dur_hat, value=2.)
-            pitch_hat = self.pitch_pred(x, lang_inds, semb).transpose(1, 2)
+            pitch_hat = self.pitch_pred(x, lang_inds, mel).transpose(1, 2)
             pitch_hat = pitch_function(pitch_hat)
-            energy_hat = self.energy_pred(x, lang_inds, semb).transpose(1, 2)
+            energy_hat = self.energy_pred(x, lang_inds, mel).transpose(1, 2)
             energy_hat = energy_function(energy_hat)
             return self._generate_mel(x=x, dur_hat=dur_hat,
                                       pitch_hat=pitch_hat,
                                       energy_hat=energy_hat,
                                       lang_inds=lang_inds,
-                                      semb=semb)
+                                      mel=mel)
 
     @torch.jit.export
     def generate_jit(self,
@@ -249,7 +277,7 @@ class ForwardTacotron(nn.Module):
     def _generate_mel(self,
                       x: torch.Tensor,
                       lang_inds: torch.Tensor,
-                      semb: torch.Tensor,
+                      mel: torch.Tensor,
                       dur_hat: torch.Tensor,
                       pitch_hat: torch.Tensor,
                       energy_hat: torch.Tensor) -> Dict[str, torch.Tensor]:
@@ -258,9 +286,10 @@ class ForwardTacotron(nn.Module):
         x = torch.cat([x, lemb], dim=-1)
         x = x.transpose(1, 2)
         x = self.prenet(x)
-        speaker_emb = semb[:, None, :]
-        speaker_emb = speaker_emb.repeat(1, x.shape[1], 1)
-        x = torch.cat([x, speaker_emb], dim=2)
+        memb = self.mel_encoder(mel)
+        memb = memb[:, None, :]
+        memb = memb.repeat(1, x.shape[1], 1)
+        x = torch.cat([x, memb], dim=2)
 
         pitch_proj = self.pitch_proj(pitch_hat)
         pitch_proj = pitch_proj.transpose(1, 2)
@@ -292,11 +321,9 @@ class ForwardTacotron(nn.Module):
 
     @classmethod
     def from_config(cls, config: Dict[str, Any]) -> 'ForwardTacotron':
-        speaker_names = config['speaker_names']
         model_config = config['forward_tacotron']['model']
         model_config['num_chars'] = len(phonemes)
         model_config['n_mels'] = config['dsp']['num_mels']
-        model_config['speaker_names'] = speaker_names
         return ForwardTacotron(**model_config)
 
     @classmethod
