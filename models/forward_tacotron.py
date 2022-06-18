@@ -23,15 +23,15 @@ class MelEncoder(nn.Module):
             BatchNormConv(conv_dims, conv_dims, 3, relu=True),
             BatchNormConv(conv_dims, conv_dims, 3, relu=True),
         ])
-        self.rnn = nn.LSTM(conv_dims, rnn_dims, batch_first=True, bidirectional=False)
-        self.lin = nn.Linear(rnn_dims, emb_dims)
+        #self.rnn = nn.LSTM(conv_dims, rnn_dims, batch_first=True, bidirectional=False)
+        self.lin = nn.Linear(conv_dims, emb_dims)
 
     def forward(self,
                 x: torch.Tensor) -> torch.Tensor:
         for conv in self.convs:
             x = conv(x)
         x = x.transpose(1, 2)
-        x, _ = self.rnn(x)
+        #x, _ = self.rnn(x)
         x = self.lin(x)
         x = torch.relu(x)
         x = torch.mean(x, dim=1)
