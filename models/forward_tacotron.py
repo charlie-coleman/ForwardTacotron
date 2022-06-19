@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import Embedding
+from torch.nn import Embedding, LayerNorm
 from torch.nn.functional import avg_pool1d
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence, pad_sequence
 
@@ -19,10 +19,11 @@ class MelEncoder(nn.Module):
     def __init__(self, mel_dim, conv_dims=256, rnn_dims=64, emb_dims=64):
         super().__init__()
         self.convs = torch.nn.ModuleList([
-            BatchNormConv(mel_dim, conv_dims, 5, relu=True),
-            BatchNormConv(conv_dims, conv_dims, 5, relu=True),
-            BatchNormConv(conv_dims, conv_dims, 5, relu=True),
+            LayerNormConv(mel_dim, conv_dims, 5, stride=3, relu=True),
+            LayerNormConv(conv_dims, conv_dims, 5, stride=3, relu=True),
+            LayerNormConv(conv_dims, conv_dims, 5, stride=3, relu=True),
         ])
+
         #self.rnn = nn.LSTM(conv_dims, rnn_dims, batch_first=True, bidirectional=False)
         self.lin = nn.Linear(conv_dims, emb_dims)
 
@@ -88,6 +89,22 @@ class BatchNormConv(nn.Module):
         if self.relu:
             x = F.relu(x)
         x = self.bnorm(x)
+        return x
+
+class LayerNormConv(nn.Module):
+
+    def __init__(self, in_channels: int, out_channels: int, kernel: int, stride: int = 1, relu: bool = True):
+        super().__init__()
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel, stride=stride, padding=kernel // 2, bias=True)
+        self.lnorm = nn.LayerNorm(out_channels)
+        self.relu = relu
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.conv(x)
+        if self.relu:
+            x = F.relu(x)
+        x = self.lnorm(x.transpose(1, 2))
+        x = x.transpose(1, 2)
         return x
 
 
