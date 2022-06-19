@@ -21,7 +21,7 @@ class MelEncoder(nn.Module):
         self.convs = torch.nn.ModuleList([
             LayerNormConv(mel_dim, conv_dims, 5, stride=3, relu=True),
             LayerNormConv(conv_dims, conv_dims, 5, stride=3, relu=True),
-            LayerNormConv(conv_dims, conv_dims, 5, stride=3, relu=True),
+            LayerNormConv(conv_dims, emb_dims, 5, stride=3, relu=True),
         ])
 
         #self.rnn = nn.LSTM(conv_dims, rnn_dims, batch_first=True, bidirectional=False)
@@ -32,9 +32,6 @@ class MelEncoder(nn.Module):
         for conv in self.convs:
             x = conv(x)
         x = x.transpose(1, 2)
-        #x, _ = self.rnn(x)
-        x = self.lin(x)
-        x = torch.relu(x)
         x = torch.mean(x, dim=1)
         return x
 
