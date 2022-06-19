@@ -46,12 +46,12 @@ class SeriesPredictor(nn.Module):
         self.embedding = Embedding(num_chars, emb_dim)
         self.mel_encoder = MelEncoder(mel_dim=80, rnn_dims=memb_dims)
         self.convs = torch.nn.ModuleList([
-            BatchNormConv(emb_dim + 32, conv_dims, 5, relu=True),
+            BatchNormConv(emb_dim + 32 + memb_dims, conv_dims, 5, relu=True),
             BatchNormConv(conv_dims, conv_dims, 5, relu=True),
             BatchNormConv(conv_dims, conv_dims, 5, relu=True),
         ])
         self.rnn = nn.GRU(conv_dims, rnn_dims, batch_first=True, bidirectional=True)
-        self.lin = nn.Linear(2 * rnn_dims + memb_dims, 1)
+        self.lin = nn.Linear(2 * rnn_dims, 1)
         self.dropout = dropout
 
     def forward(self,
@@ -61,17 +61,16 @@ class SeriesPredictor(nn.Module):
                 alpha: float = 1.0) -> torch.Tensor:
         x = self.embedding(x)
         lemb = self.lang_embedding(lang_ind)
-        x = torch.cat([x, lemb], dim=2)
+        memb = self.mel_encoder(mel)
+        memb = memb[:, None, :]
+        memb = memb.repeat(1, x.shape[1], 1)
+        x = torch.cat([x, lemb, memb], dim=2)
         x = x.transpose(1, 2)
         for conv in self.convs:
             x = conv(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
         x = x.transpose(1, 2)
         x, _ = self.rnn(x)
-        memb = self.mel_encoder(mel)
-        memb = memb[:, None, :]
-        memb = memb.repeat(1, x.shape[1], 1)
-        x = torch.cat([x, memb], dim=-1)
         x = self.lin(x)
         return x / alpha
 

@@ -209,7 +209,7 @@ class ForwardTrainer:
             global_step=model.step, sample_rate=self.dsp.sample_rate)
 
         for i in range(10):
-            gen = model.generate(batch['x'][0:1, :batch['x_len'][i]], mel=batch['mel'][i:i+1, :, :batch['mel_len'][i]])
+            gen = model.generate(batch['x'][0:1, :batch['x_len'][0]], mel=batch['mel'][i:i+1, :, :batch['mel_len'][i]])
             m1_hat = np_now(gen['mel'].squeeze())
             m2_hat = np_now(gen['mel_post'].squeeze())
 
