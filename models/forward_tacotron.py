@@ -19,20 +19,22 @@ class MelEncoder(nn.Module):
     def __init__(self, mel_dim, conv_dims=256, rnn_dims=64, emb_dims=64):
         super().__init__()
         self.convs = torch.nn.ModuleList([
-            LayerNormConv(mel_dim, conv_dims, 5, stride=3, relu=True),
-            LayerNormConv(conv_dims, conv_dims, 5, stride=3, relu=True),
-            LayerNormConv(conv_dims, emb_dims, 5, stride=3, relu=True),
+            LayerNormConv(mel_dim, conv_dims, 5, stride=1, relu=True),
+            LayerNormConv(conv_dims, conv_dims, 5, stride=1, relu=True),
+            LayerNormConv(conv_dims, emb_dims, 5, stride=1, relu=True),
         ])
 
-        #self.rnn = nn.LSTM(conv_dims, rnn_dims, batch_first=True, bidirectional=False)
-        self.lin = nn.Linear(conv_dims, emb_dims)
+        self.rnn = nn.LSTM(conv_dims, rnn_dims, batch_first=True, bidirectional=False)
+        self.lin = nn.Linear(rnn_dims, emb_dims)
 
     def forward(self,
                 x: torch.Tensor) -> torch.Tensor:
         for conv in self.convs:
             x = conv(x)
         x = x.transpose(1, 2)
-        x = torch.mean(x, dim=1)
+        _, (x, _) = self.rnn(x)
+        x = self.lin(x[-1])
+        x = torch.relu(x)
         return x
 
 

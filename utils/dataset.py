@@ -257,6 +257,10 @@ class ForwardDataset(Dataset):
         self.text_dict = text_dict
         self.tokenizer = tokenizer
         self.speaker_dict = unpickle_binary(self.path/'speaker_dict.pkl')
+        self.speaker_items = {s: [] for s in self.speaker_dict.values()}
+        for id, s in self.speaker_dict.items():
+            self.speaker_items[s].append(id)
+
         print()
 
     def __getitem__(self, index: int) -> Dict[str, torch.tensor]:
@@ -264,6 +268,10 @@ class ForwardDataset(Dataset):
         text = self.text_dict[item_id]
         x = self.tokenizer(text)
         mel = np.load(str(self.path/'mel'/f'{item_id}.npy'))
+        #sid = self.speaker_dict[item_id]
+        #idlist = self.speaker_items[sid]
+        #r_id = random.choice(idlist)
+        #r_mel = np.load(str(self.path/'mel'/f'{r_id}.npy'))
         mel_len = mel.shape[-1]
         dur = np.load(str(self.path/'alg'/f'{item_id}.npy'))
         pitch = np.load(str(self.path/'phon_pitch'/f'{item_id}.npy'))
@@ -312,6 +320,7 @@ def collate_tts(batch: List[Dict[str, Union[str, torch.tensor]]], r: int) -> Dic
     mel = [pad2d(b['mel'], max_spec_len) for b in batch]
     mel = np.stack(mel)
     mel = torch.tensor(mel)
+    #r_mel = [torch.tensor(b['r_mel']) for b in batch]
     item_id = [b['item_id'] for b in batch]
     mel_lens = [b['mel_len'] for b in batch]
     mel_lens = torch.tensor(mel_lens)
