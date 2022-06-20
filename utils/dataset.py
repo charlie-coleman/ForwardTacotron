@@ -256,12 +256,12 @@ class ForwardDataset(Dataset):
         self.metadata = dataset_ids
         self.text_dict = text_dict
         self.tokenizer = tokenizer
-        self.speaker_dict = unpickle_binary(self.path/'speaker_dict.pkl')
-        self.speaker_items = {s: [] for s in self.speaker_dict.values()}
-        for id, s in self.speaker_dict.items():
-            self.speaker_items[s].append(id)
+        #self.speaker_dict = unpickle_binary(self.path/'speaker_dict.pkl')
+        #self.speaker_items = {s: [] for s in self.speaker_dict.values()}
+        #for id, s in self.speaker_dict.items():
+        #    self.speaker_items[s].append(id)
 
-        print()
+        #print()
 
     def __getitem__(self, index: int) -> Dict[str, torch.tensor]:
         item_id = self.metadata[index]
