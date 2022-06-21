@@ -1,5 +1,6 @@
 import argparse
 import itertools
+import numpy as np
 from pathlib import Path
 from typing import Tuple
 
@@ -117,7 +118,7 @@ def norm_durs() -> Tuple[float, float]:
             print(f'normalizing {len(all_data)} files.')
             durations = []
             for prog_idx, (item_id, mel_len) in enumerate(all_data, 1):
-                dur = np.load(paths.alg / f'{item_id}.npy')
+                dur = np.load(paths.alg / f'{item_id}.npy').astype(np.float)
                 durations.append((item_id, dur))
                 bar = progbar(prog_idx, len(all_data))
                 msg = f'{bar} {prog_idx}/{len(all_data)} Files '
