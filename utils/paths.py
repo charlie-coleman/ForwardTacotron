@@ -13,6 +13,7 @@ class Paths:
         self.mel = self.data/'mel'
         self.gta = self.data/'gta'
         self.alg = self.data/'alg'
+        self.alg_norm = self.data/'alg_norm'
         self.speaker_emb = self.data/'speaker_emb'
         self.raw_pitch = self.data/'raw_pitch'
         self.phon_pitch = self.data/'phon_pitch'

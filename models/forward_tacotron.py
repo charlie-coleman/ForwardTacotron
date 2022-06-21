@@ -134,6 +134,8 @@ class ForwardTacotron(nn.Module):
         self.energy_proj = nn.Conv1d(1, 2 * prenet_dims + semb_dims, kernel_size=3, padding=1)
         for speaker_name in speaker_names:
             self.register_buffer(speaker_name, torch.zeros(semb_dims, dtype=torch.float))
+        for speaker_name in speaker_names:
+            self.register_buffer(f'{speaker_name}_mean_var', torch.zeros(2, dtype=torch.float))
 
     def __repr__(self):
         num_params = sum([np.prod(p.size()) for p in self.parameters()])
@@ -196,12 +198,14 @@ class ForwardTacotron(nn.Module):
                  x: torch.Tensor,
                  semb: torch.Tensor,
                  alpha=1.0,
+                 dur_mean: float = 4,
+                 dur_var: float = 2,
                  pitch_function: Callable[[torch.Tensor], torch.Tensor] = lambda x: x,
                  energy_function: Callable[[torch.Tensor], torch.Tensor] = lambda x: x) -> Dict[str, torch.Tensor]:
         self.eval()
         with torch.no_grad():
             dur_hat = self.dur_pred(x, semb, alpha=alpha)
-            dur_hat = dur_hat.squeeze(2)
+            dur_hat = dur_hat.squeeze(2) * dur_var + dur_mean
             if torch.sum(dur_hat.long()) <= 0:
                 torch.fill_(dur_hat, value=2.)
             pitch_hat = self.pitch_pred(x, semb).transpose(1, 2)

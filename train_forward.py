@@ -98,7 +98,9 @@ if __name__ == '__main__':
                        path=paths.forward_checkpoints / 'latest_model.pt',
                        device=device)
 
+    speaker_stats = unpickle_binary(paths.data / 'speaker_stats.pkl')
     for speaker_name in speaker_names:
+
         print(speaker_name)
         print(speaker_emb[speaker_name])
         print(speaker_norm[speaker_name])
@@ -107,10 +109,13 @@ if __name__ == '__main__':
         print(emb)
 
         setattr(model, speaker_name, emb)
+        mean_var = speaker_stats[speaker_name]
+        setattr(model, f'{speaker_name}_mean_var', torch.tensor(list(mean_var)))
 
-    print('model speaker name embs:')
+    print('model speaker name mean var:')
     for speaker_name in speaker_names:
-        print(speaker_name, getattr(model, speaker_name))
+        #print(speaker_name, getattr(model, speaker_name))
+        print(speaker_name, getattr(model, f'{speaker_name}_mean_var'))
 
     if force_gta:
         print('Creating Ground Truth Aligned Dataset...\n')

@@ -32,6 +32,17 @@ def normalize_values(phoneme_val):
     return mean, std
 
 
+def normalize_durs(phoneme_val):
+    nonzeros = np.concatenate([v  for item_id, v in phoneme_val])
+    mean, std = np.mean(nonzeros), np.std(nonzeros)
+    for item_id, v in phoneme_val:
+        zero_idxs = np.where(v == 0.0)[0]
+        v -= mean
+        v /= std
+        v[zero_idxs] = 0.0
+    return mean, std
+
+
 # adapted from https://github.com/NVIDIA/DeepLearningExamples/blob/
 # 0b27e359a5869cd23294c1707c92f989c0bf201e/PyTorch/SpeechSynthesis/FastPitch/extract_mels.py
 def extract_pitch_energy(save_path_pitch: Path,
@@ -75,7 +86,7 @@ def extract_pitch_energy(save_path_pitch: Path,
             for item_id, phoneme_energy in phoneme_energies:
                 np.save(str(save_path_energy / f'{item_id}.npy'), phoneme_energy, allow_pickle=False)
 
-            mean, var = normalize_values(phoneme_pitches)
+            mean, var = (phoneme_pitches)
             for item_id, phoneme_pitch in phoneme_pitches:
                 np.save(str(save_path_pitch / f'{item_id}.npy'), phoneme_pitch, allow_pickle=False)
 
@@ -84,6 +95,47 @@ def extract_pitch_energy(save_path_pitch: Path,
             print(e)
 
     return mean, var
+
+
+
+# adapted from https://github.com/NVIDIA/DeepLearningExamples/blob/
+# 0b27e359a5869cd23294c1707c92f989c0bf201e/PyTorch/SpeechSynthesis/FastPitch/extract_mels.py
+def norm_durs() -> Tuple[float, float]:
+    speaker_dict = unpickle_binary(paths.data / 'speaker_dict.pkl')
+
+
+    speaker_names = set([v for v in speaker_dict.values() if len(v) > 1])
+
+    speaker_stats = dict()
+    for speaker_name in speaker_names:
+        try:
+            print(f'normalizing durations for {speaker_name}')
+            train_data = unpickle_binary(paths.data / 'train_dataset.pkl')
+            val_data = unpickle_binary(paths.data / 'val_dataset.pkl')
+            all_data = train_data + val_data
+            all_data = [d for d in all_data if speaker_dict[d[0]] == speaker_name]
+            print(f'normalizing {len(all_data)} files.')
+            durations = []
+            for prog_idx, (item_id, mel_len) in enumerate(all_data, 1):
+                dur = np.load(paths.alg / f'{item_id}.npy')
+                durations.append((item_id, dur))
+                bar = progbar(prog_idx, len(all_data))
+                msg = f'{bar} {prog_idx}/{len(all_data)} Files '
+                stream(msg)
+
+            mean, var = normalize_values(durations)
+            print(f'\nDur mean: {mean} std: {var}')
+            for item_id, dur in durations:
+                np.save(str(paths.alg_norm / f'{item_id}.npy'), dur, allow_pickle=False)
+
+            speaker_stats[speaker_name] = (mean, var)
+
+        except Exception as e:
+            print(e)
+
+    pickle_binary(speaker_stats, paths.data / 'speaker_stats.pkl')
+    return mean, var
+
 
 
 def create_gta_features(model: Tacotron,
@@ -160,12 +212,20 @@ if __name__ == '__main__':
     parser.add_argument('--force_gta', '-g', action='store_true', help='Force the model to create GTA features')
     parser.add_argument('--force_align', '-a', action='store_true', help='Force the model to create attention alignment features')
     parser.add_argument('--extract_pitch', '-p', action='store_true', help='Extracts phoneme-pitch values only')
+    parser.add_argument('--norm_dur', '-p', action='store_true', help='Extracts phoneme-pitch values only')
     parser.add_argument('--config', metavar='FILE', default='config.yaml', help='The config containing all hyperparams.')
 
     args = parser.parse_args()
     config = read_config(args.config)
     dsp = DSP.from_config(config)
     paths = Paths(config['data_path'], config['voc_model_id'], config['tts_model_id'])
+
+    if args.norm_dur:
+        print('Extracting Pitch and Energy Values...')
+        mean, var = norm_durs(save_path_pitch=paths.phon_pitch,
+                              save_path_energy=paths.phon_energy,
+                              pitch_max_freq=dsp.pitch_max_freq)
+        print('\n\nYou can now train ForwardTacotron - use python train_forward.py\n')
 
     if args.extract_pitch:
         print('Extracting Pitch and Energy Values...')

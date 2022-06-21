@@ -14,7 +14,7 @@ from utils.dataset import get_tts_datasets
 from utils.decorators import ignore_exception
 from utils.display import stream, simple_table, plot_mel, plot_pitch
 from utils.dsp import DSP
-from utils.files import parse_schedule
+from utils.files import parse_schedule, unpickle_binary
 from utils.paths import Paths
 
 
@@ -55,6 +55,7 @@ class ForwardTrainer:
         training_steps = session.max_step - current_step
         total_iters = len(session.train_set)
         epochs = training_steps // total_iters + 1
+        speaker_stats = unpickle_binary(self.paths.data / 'speaker_stats.pkl')
         simple_table([(f'Steps', str(training_steps // 1000) + 'k Steps'),
                       ('Batch Size', session.bs),
                       ('Learning Rate', session.lr)])
@@ -86,7 +87,7 @@ class ForwardTrainer:
                 m1_loss = self.l1_loss(pred['mel'], batch['mel'], batch['mel_len'])
                 m2_loss = self.l1_loss(pred['mel_post'], batch['mel'], batch['mel_len'])
 
-                dur_loss = self.l1_loss(pred['dur'].unsqueeze(1), batch['dur_hat'].unsqueeze(1), batch['x_len'])
+                dur_loss = self.l1_loss(pred['dur_norm'].unsqueeze(1), batch['dur_hat'].unsqueeze(1), batch['x_len'])
                 pitch_loss = self.l1_loss(pred['pitch'], pitch_target.unsqueeze(1), batch['x_len'])
                 energy_loss = self.l1_loss(pred['energy'], energy_target.unsqueeze(1), batch['x_len'])
 
@@ -156,7 +157,7 @@ class ForwardTrainer:
                 pred = model(batch)
                 m1_loss = self.l1_loss(pred['mel'], batch['mel'], batch['mel_len'])
                 m2_loss = self.l1_loss(pred['mel_post'], batch['mel'], batch['mel_len'])
-                dur_loss = self.l1_loss(pred['dur'].unsqueeze(1), batch['dur_hat'].unsqueeze(1), batch['x_len'])
+                dur_loss = self.l1_loss(pred['dur_norm'].unsqueeze(1), batch['dur_hat'].unsqueeze(1), batch['x_len'])
                 pitch_loss = self.l1_loss(pred['pitch'], batch['pitch_hat'].unsqueeze(1), batch['x_len'])
                 energy_loss = self.l1_loss(pred['energy'], batch['energy'].unsqueeze(1), batch['x_len'])
                 pitch_val_loss += pitch_loss
@@ -211,7 +212,9 @@ class ForwardTrainer:
         speaker_names = self.config['speaker_names']
         for speaker_name in speaker_names:
             speaker_emb = getattr(model, speaker_name).unsqueeze(0)
-            gen = model.generate(batch['x'][0:1, :batch['x_len'][0]], semb=speaker_emb)
+            mean_var = getattr(model, f'{speaker_name}_mean_var')
+            mean, var = mean_var
+            gen = model.generate(batch['x'][0:1, :batch['x_len'][0]], semb=speaker_emb, dur_mean=mean, dur_var=var)
             m1_hat = np_now(gen['mel'].squeeze())
             m2_hat = np_now(gen['mel_post'].squeeze())
 
