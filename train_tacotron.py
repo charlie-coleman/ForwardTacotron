@@ -222,9 +222,7 @@ if __name__ == '__main__':
 
     if args.norm_dur:
         print('Extracting Pitch and Energy Values...')
-        mean, var = norm_durs(save_path_pitch=paths.phon_pitch,
-                              save_path_energy=paths.phon_energy,
-                              pitch_max_freq=dsp.pitch_max_freq)
+        mean, var = norm_durs()
         print('\n\nYou can now train ForwardTacotron - use python train_forward.py\n')
 
     if args.extract_pitch:
