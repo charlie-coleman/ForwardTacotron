@@ -212,7 +212,7 @@ if __name__ == '__main__':
     parser.add_argument('--force_gta', '-g', action='store_true', help='Force the model to create GTA features')
     parser.add_argument('--force_align', '-a', action='store_true', help='Force the model to create attention alignment features')
     parser.add_argument('--extract_pitch', '-p', action='store_true', help='Extracts phoneme-pitch values only')
-    parser.add_argument('--norm_dur', '-p', action='store_true', help='Extracts phoneme-pitch values only')
+    parser.add_argument('--norm_dur',  action='store_true', help='Extracts phoneme-pitch values only')
     parser.add_argument('--config', metavar='FILE', default='config.yaml', help='The config containing all hyperparams.')
 
     args = parser.parse_args()
