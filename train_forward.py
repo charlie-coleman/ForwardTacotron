@@ -75,6 +75,9 @@ if __name__ == '__main__':
     # Instantiate Forward TTS Model
     speaker_dict = unpickle_binary('data_multi/speaker_dict.pkl')
     speaker_names = {s for s in speaker_dict.values() if len(s) > 1}
+    speaker_stats = unpickle_binary(paths.data / 'speaker_stats.pkl')
+
+    speaker_names = [n for n in speaker_names if n in speaker_dict and n in speaker_stats]
     config['speaker_names'] = speaker_names
     model = init_tts_model(config).to(device)
     print(f'\nInitialized tts model: {model}\n')
@@ -88,8 +91,6 @@ if __name__ == '__main__':
 
     for f in tqdm.tqdm(sembs, total=len(sembs)):
         item_id = f.stem
-        if item_id not in speaker_dict:
-            continue
         speaker_name = speaker_dict[item_id]
         emb = np.load(paths.speaker_emb / f'{item_id}.npy')
         speaker_emb[speaker_name] += emb
@@ -100,8 +101,8 @@ if __name__ == '__main__':
                        path=paths.forward_checkpoints / 'latest_model.pt',
                        device=device)
 
-    speaker_stats = unpickle_binary(paths.data / 'speaker_stats.pkl')
     for speaker_name in speaker_names:
+
 
         print(speaker_name)
         print(speaker_emb[speaker_name])
