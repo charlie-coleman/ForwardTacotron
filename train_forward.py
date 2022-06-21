@@ -91,6 +91,8 @@ if __name__ == '__main__':
 
     for f in tqdm.tqdm(sembs, total=len(sembs)):
         item_id = f.stem
+        if item_id not in speaker_dict:
+            continue
         speaker_name = speaker_dict[item_id]
         emb = np.load(paths.speaker_emb / f'{item_id}.npy')
         speaker_emb[speaker_name] += emb
