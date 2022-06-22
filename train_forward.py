@@ -73,7 +73,7 @@ if __name__ == '__main__':
     print('Using device:', device)
 
     # Instantiate Forward TTS Model
-    speaker_dict = unpickle_binary('data_multi/speaker_dict.pkl')
+    speaker_dict = unpickle_binary(paths.data/'speaker_dict.pkl')
     speaker_names = {s for s in speaker_dict.values() if len(s) > 1}
     speaker_stats = unpickle_binary(paths.data / 'speaker_stats.pkl')
 
@@ -126,7 +126,8 @@ if __name__ == '__main__':
         print('Creating Ground Truth Aligned Dataset...\n')
         train_set, val_set = get_tts_datasets(
             paths.data, 8, r=1, model_type='forward',
-            filter_attention=False, max_mel_len=None)
+            filter_attention=False, max_mel_len=None,
+            num_asvoice=config['preprocessing']['num_asvoice'], num_other=config['preprocessing']['num_other'])
         create_gta_features(model, train_set, val_set, paths.gta)
         print('\n\nYou can now train WaveRNN on GTA features - use python train_wavernn.py --gta\n')
     else:
