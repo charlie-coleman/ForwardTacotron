@@ -17,7 +17,7 @@ class SeriesPredictor(nn.Module):
         super().__init__()
         self.embedding = Embedding(num_chars, emb_dim)
         self.convs = torch.nn.ModuleList([
-            BatchNormConv(emb_dim + semb_dims, conv_dims, 5, relu=True),
+            BatchNormConv(emb_dim + semb_dims + 64, conv_dims, 5, relu=True),
             BatchNormConv(conv_dims, conv_dims, 5, relu=True),
             BatchNormConv(conv_dims, conv_dims, 5, relu=True),
         ])
@@ -28,14 +28,12 @@ class SeriesPredictor(nn.Module):
     def forward(self,
                 x: torch.Tensor,
                 semb: torch.Tensor,
-                ada: torch.Tensor = None,
+                ada: torch.Tensor,
                 alpha: float = 1.0) -> torch.Tensor:
         x = self.embedding(x)
-        if ada is not None:
-            x = x + ada
         speaker_emb = semb[:, None, :]
         speaker_emb = speaker_emb.repeat(1, x.shape[1], 1)
-        x = torch.cat([x, speaker_emb], dim=2)
+        x = torch.cat([x, speaker_emb, ada], dim=2)
         x = x.transpose(1, 2)
         for conv in self.convs:
             x = conv(x)
@@ -122,8 +120,7 @@ class ForwardTacotron(nn.Module):
                                          out_dim=4)
 
         self.phon_train_pred = PhonPredictor()
-        self.phon_lin = Linear(4, embed_dims)
-        self.phon_series_lin = Linear(4, series_embed_dims)
+        self.phon_series_lin = Linear(4, 64)
 
         self.dur_pred = SeriesPredictor(num_chars=num_chars,
                                         emb_dim=series_embed_dims,
@@ -163,6 +160,7 @@ class ForwardTacotron(nn.Module):
         self.energy_strength = energy_strength
         self.pitch_proj = nn.Conv1d(1, 2 * prenet_dims + semb_dims, kernel_size=3, padding=1)
         self.energy_proj = nn.Conv1d(1, 2 * prenet_dims + semb_dims, kernel_size=3, padding=1)
+        self.ada_proj = nn.Conv1d(4, 2 * prenet_dims + semb_dims, kernel_size=3, padding=1)
         for speaker_name in speaker_names:
             self.register_buffer(speaker_name, torch.zeros(semb_dims, dtype=torch.float))
 
@@ -199,14 +197,12 @@ class ForwardTacotron(nn.Module):
         ada_target_in = ada_target if train else ada_hat
 
         ada_series = self.phon_series_lin(ada_target_in)
-        ada_out = self.phon_lin(ada_target_in)
 
         dur_hat = self.dur_pred(x, semb, ada_series).squeeze(-1)
         pitch_hat = self.pitch_pred(x, semb, ada_series).transpose(1, 2)
         energy_hat = self.energy_pred(x, semb, ada_series).transpose(1, 2)
 
         x = self.embedding(x)
-        x = x + ada_out
         x = x.transpose(1, 2)
         x = self.prenet(x)
         speaker_emb = semb[:, None, :]
@@ -220,6 +216,10 @@ class ForwardTacotron(nn.Module):
         energy_proj = self.energy_proj(energy)
         energy_proj = energy_proj.transpose(1, 2)
         x = x + energy_proj * self.energy_strength
+
+        ada_proj = self.ada_proj(ada_target)
+        ada_proj = ada_proj.transpose(1, 2)
+        x = x + ada_proj * self.ada_strength
 
         x = self.lr(x, dur)
 
@@ -263,7 +263,8 @@ class ForwardTacotron(nn.Module):
             pitch_hat = pitch_function(pitch_hat)
             energy_hat = self.energy_pred(x, semb, ada_series).transpose(1, 2)
             energy_hat = energy_function(energy_hat)
-            return self._generate_mel(x=x, dur_hat=dur_hat,
+
+        return self._generate_mel(x=x, dur_hat=dur_hat,
                                       pitch_hat=pitch_hat,
                                       energy_hat=energy_hat, semb=semb, ada_hat=ada_hat)
 
@@ -278,8 +279,6 @@ class ForwardTacotron(nn.Module):
                       ada_hat: torch.Tensor,
                       energy_hat: torch.Tensor) -> Dict[str, torch.Tensor]:
         x = self.embedding(x)
-        ada = self.phon_lin(ada_hat)
-        x = x + ada
         x = x.transpose(1, 2)
         x = self.prenet(x)
         speaker_emb = semb[:, None, :]
@@ -293,6 +292,10 @@ class ForwardTacotron(nn.Module):
         energy_proj = self.energy_proj(energy_hat)
         energy_proj = energy_proj.transpose(1, 2)
         x = x + energy_proj * self.energy_strength
+
+        ada_proj = self.ada_proj(ada_hat)
+        ada_proj = ada_proj.transpose(1, 2)
+        x = x + ada_proj * self.ada_strength
 
         x = self.lr(x, dur_hat)
 

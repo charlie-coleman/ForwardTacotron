@@ -174,7 +174,8 @@ class ForwardTrainer:
             'mel_loss': m_val_loss / len(val_set),
             'dur_loss': dur_val_loss / len(val_set),
             'pitch_loss': pitch_val_loss / len(val_set),
-            'energy_loss': energy_val_loss / len(val_set)
+            'energy_loss': energy_val_loss / len(val_set),
+            'ada_loss': ada_val_loss / len(val_set)
         }
 
     @ignore_exception
