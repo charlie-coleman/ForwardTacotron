@@ -225,11 +225,9 @@ class ForwardTacotron(nn.Module):
         ada_target = self.phon_train_pred(ada_in)
 
         ada_hat = self.phon_pred(x, semb)
-
         ada_target_in = ada_target if train else ada_hat
-
         ada_series = self.phon_series_lin(ada_target_in)
-
+        ada_hat = ada_hat.transpose(1, 2)
         dur_hat = self.dur_pred(x, semb, ada_series).squeeze(-1)
         pitch_hat = self.pitch_pred(x, semb, ada_series).transpose(1, 2)
         energy_hat = self.energy_pred(x, semb, ada_series).transpose(1, 2)
@@ -286,7 +284,6 @@ class ForwardTacotron(nn.Module):
         with torch.no_grad():
             ada_hat = self.phon_pred(x, semb)
             ada_series = self.phon_series_lin(ada_hat)
-
             dur_hat = self.dur_pred(x, semb, ada_series, alpha=alpha)
             dur_hat = dur_hat.squeeze(2)
             if torch.sum(dur_hat.long()) <= 0:
@@ -295,6 +292,7 @@ class ForwardTacotron(nn.Module):
             pitch_hat = pitch_function(pitch_hat)
             energy_hat = self.energy_pred(x, semb, ada_series).transpose(1, 2)
             energy_hat = energy_function(energy_hat)
+            ada_hat = ada_hat.transpose(1, 2)
 
         return self._generate_mel(x=x, dur_hat=dur_hat,
                                       pitch_hat=pitch_hat,
