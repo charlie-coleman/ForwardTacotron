@@ -249,7 +249,7 @@ class ForwardTacotron(nn.Module):
 
         ada_proj = self.ada_proj(ada_target_in)
         ada_proj = ada_proj.transpose(1, 2)
-        x = x + ada_proj * self.ada_strength
+        x = x + ada_proj
 
         x = self.lr(x, dur)
 
@@ -325,7 +325,7 @@ class ForwardTacotron(nn.Module):
 
         ada_proj = self.ada_proj(ada_hat)
         ada_proj = ada_proj.transpose(1, 2)
-        x = x + ada_proj * self.ada_strength
+        x = x + ada_proj
 
         x = self.lr(x, dur_hat)
 
