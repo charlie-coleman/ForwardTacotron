@@ -44,6 +44,38 @@ class SeriesPredictor(nn.Module):
         return x / alpha
 
 
+class SeriesPredictorNoAda(nn.Module):
+
+    def __init__(self, num_chars, emb_dim=64, conv_dims=256, rnn_dims=64, dropout=0.5, semb_dims=256, out_dim=1):
+        super().__init__()
+        self.embedding = Embedding(num_chars, emb_dim)
+        self.convs = torch.nn.ModuleList([
+            BatchNormConv(emb_dim + semb_dims, conv_dims, 5, relu=True),
+            BatchNormConv(conv_dims, conv_dims, 5, relu=True),
+            BatchNormConv(conv_dims, conv_dims, 5, relu=True),
+        ])
+        self.rnn = nn.GRU(conv_dims, rnn_dims, batch_first=True, bidirectional=True)
+        self.lin = nn.Linear(2 * rnn_dims, out_dim)
+        self.dropout = dropout
+
+    def forward(self,
+                x: torch.Tensor,
+                semb: torch.Tensor,
+                alpha: float = 1.0) -> torch.Tensor:
+        x = self.embedding(x)
+        speaker_emb = semb[:, None, :]
+        speaker_emb = speaker_emb.repeat(1, x.shape[1], 1)
+        x = torch.cat([x, speaker_emb], dim=2)
+        x = x.transpose(1, 2)
+        for conv in self.convs:
+            x = conv(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        x = x.transpose(1, 2)
+        x, _ = self.rnn(x)
+        x = self.lin(x)
+        return x / alpha
+
+
 class BatchNormConv(nn.Module):
 
     def __init__(self, in_channels: int, out_channels: int, kernel: int, relu: bool = False):
@@ -112,7 +144,7 @@ class ForwardTacotron(nn.Module):
         self.embedding = nn.Embedding(num_chars, embed_dims)
         self.lr = LengthRegulator()
 
-        self.phon_pred = SeriesPredictor(num_chars=num_chars,
+        self.phon_pred = SeriesPredictorNoAda(num_chars=num_chars,
                                          emb_dim=series_embed_dims,
                                          conv_dims=pitch_conv_dims,
                                          rnn_dims=pitch_rnn_dims,
