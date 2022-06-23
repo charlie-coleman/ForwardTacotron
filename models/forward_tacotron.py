@@ -227,7 +227,7 @@ class ForwardTacotron(nn.Module):
         ada_hat = self.phon_pred(x, semb)
         ada_target_in = ada_target if train else ada_hat
         ada_series = self.phon_series_lin(ada_target_in)
-        ada_hat = ada_hat.transpose(1, 2)
+        ada_target_in = ada_target_in.transpose(1, 2)
         dur_hat = self.dur_pred(x, semb, ada_series).squeeze(-1)
         pitch_hat = self.pitch_pred(x, semb, ada_series).transpose(1, 2)
         energy_hat = self.energy_pred(x, semb, ada_series).transpose(1, 2)
@@ -247,7 +247,7 @@ class ForwardTacotron(nn.Module):
         energy_proj = energy_proj.transpose(1, 2)
         x = x + energy_proj * self.energy_strength
 
-        ada_proj = self.ada_proj(ada_target)
+        ada_proj = self.ada_proj(ada_target_in)
         ada_proj = ada_proj.transpose(1, 2)
         x = x + ada_proj * self.ada_strength
 
