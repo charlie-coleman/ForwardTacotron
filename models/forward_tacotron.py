@@ -194,7 +194,7 @@ class ForwardTacotron(nn.Module):
         ada_in[ada_in != ada_in] = 0
         ada_target = self.phon_train_pred(ada_in)
 
-        ada_hat = self.phon_pred(x)
+        ada_hat = self.phon_pred(x, semb)
 
         ada_target_in = ada_target if train else ada_hat
 
@@ -252,7 +252,7 @@ class ForwardTacotron(nn.Module):
                  energy_function: Callable[[torch.Tensor], torch.Tensor] = lambda x: x) -> Dict[str, torch.Tensor]:
         self.eval()
         with torch.no_grad():
-            ada_hat = self.phon_pred(x)
+            ada_hat = self.phon_pred(x, semb)
             ada_series = self.phon_series_lin(ada_hat)
 
             dur_hat = self.dur_pred(x, semb, ada_series, alpha=alpha)
