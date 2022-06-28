@@ -17,12 +17,12 @@ class SeriesPredictor(nn.Module):
         super().__init__()
         self.embedding = Embedding(num_chars, emb_dim)
         self.convs = torch.nn.ModuleList([
-            BatchNormConv(emb_dim + semb_dims, conv_dims, 5, relu=True),
+            BatchNormConv(emb_dim, conv_dims, 5, relu=True),
             BatchNormConv(conv_dims, conv_dims, 5, relu=True),
             BatchNormConv(conv_dims, conv_dims, 5, relu=True),
         ])
         self.rnn = nn.GRU(conv_dims, rnn_dims, batch_first=True, bidirectional=True)
-        self.lin = nn.Linear(2 * rnn_dims, 1)
+        self.lin = nn.Linear(2 * rnn_dims + semb_dims, 1)
         self.dropout = dropout
 
     def forward(self,
@@ -30,15 +30,15 @@ class SeriesPredictor(nn.Module):
                 semb: torch.Tensor,
                 alpha: float = 1.0) -> torch.Tensor:
         x = self.embedding(x)
-        speaker_emb = semb[:, None, :]
-        speaker_emb = speaker_emb.repeat(1, x.shape[1], 1)
-        x = torch.cat([x, speaker_emb], dim=2)
         x = x.transpose(1, 2)
         for conv in self.convs:
             x = conv(x)
             x = F.dropout(x, p=self.dropout, training=self.training)
         x = x.transpose(1, 2)
         x, _ = self.rnn(x)
+        speaker_emb = semb[:, None, :]
+        speaker_emb = speaker_emb.repeat(1, x.shape[1], 1)
+        x = torch.cat([x, speaker_emb], dim=2)
         x = self.lin(x)
         return x / alpha
 
