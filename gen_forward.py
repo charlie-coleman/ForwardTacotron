@@ -48,6 +48,7 @@ if __name__ == '__main__':
     parser.add_argument('--alpha', type=float, default=1., help='Parameter for controlling length regulator for speedup '
                                                                 'or slow-down of generated speech, e.g. alpha=2.0 is double-time')
     parser.add_argument('--amp', type=float, default=1., help='Parameter for controlling pitch amplification')
+    parser.add_argument('--output', type=str, default=None, help='[string/path]')
 
     # name of subcommand goes to args.vocoder
     subparsers = parser.add_subparsers(dest='vocoder')
@@ -79,7 +80,7 @@ if __name__ == '__main__':
         voc_model, voc_config = load_wavernn(args.voc_checkpoint)
         voc_dsp = DSP.from_config(voc_config)
 
-    out_path = Path('model_outputs')
+    out_path = Path('model_outputs/forward')
     out_path.mkdir(parents=True, exist_ok=True)
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     tts_model.to(device)
@@ -112,6 +113,12 @@ if __name__ == '__main__':
 
         wav_name = f'{i}_forward_{tts_k}k_alpha{args.alpha}_amp{args.amp}_{args.vocoder}'
 
+        tts_name = config['tts_model_id']
+        wav_name = f'{tts_name}_{tts_k}k_{i}'
+        wavpath = None if args.output == None else args.output.format(i)
+        if wavpath == None:
+          wavpath = out_path / f'{wav_name}.wav'
+
         gen = tts_model.generate(x=x,
                                  alpha=args.alpha,
                                  pitch_function=pitch_function,
@@ -128,7 +135,7 @@ if __name__ == '__main__':
                                      target=args.target,
                                      overlap=args.overlap,
                                      mu_law=voc_dsp.mu_law)
-            dsp.save_wav(wav, out_path / f'{wav_name}.wav')
+            dsp.save_wav(wav, wavpath)
         elif args.vocoder == 'griffinlim':
             wav = dsp.griffinlim(m.squeeze().numpy())
             dsp.save_wav(wav, out_path / f'{wav_name}.wav')

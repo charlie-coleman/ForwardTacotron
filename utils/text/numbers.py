@@ -12,6 +12,37 @@ _dollars_re = re.compile(r'\$([0-9\.\,]*[0-9]+)')
 _ordinal_re = re.compile(r'[0-9]+(st|nd|rd|th)')
 _number_re = re.compile(r'[0-9]+')
 
+inflect.mill.extend([
+  "undecillion",
+  "duodecillion",
+  "tredecillion",
+  "quattuordecillion",
+  "quindecillion",
+  "sexdecillion",
+  "septendecillion",
+  "octodecillion",
+  "novemdecillion",
+  "vigintillion",
+  "unvigintillion",
+  "dovigintillion",
+  "trevigintillion",
+  "quattuorvigintillion",
+  "quinvigintillion",
+  "sexvigintillion",
+  "septenvigintillion",
+  "octovigintillion",
+  "novemvigintillion",
+  "trigintillion",
+  "untrigintillion",
+  "dotrigintillion",
+  "tretrigintillion",
+  "quattuortrigintillion",
+  "quintrigintillion",
+  "sextrigintillion",
+  "septentrigintillion",
+  "octotrigintillion",
+  "novemtrigintillion"		
+])
 
 def _remove_commas(m):
   return m.group(1).replace(',', '')
@@ -58,7 +89,14 @@ def _expand_number(m):
     else:
       return _inflect.number_to_words(num, andword='', zero='oh', group=2).replace(', ', ' ')
   else:
-    return _inflect.number_to_words(num, andword='')
+    try:
+      return _inflect.number_to_words(num, andword='')
+    except:
+      out = ""
+      numStr = str(num)
+      for l in numStr:
+        out = out + _inflect.number_to_words(int(l), andword='') + " "
+      return out[:-1]
 
 
 def normalize_numbers(text):

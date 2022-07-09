@@ -43,6 +43,7 @@ if __name__ == '__main__':
     parser.add_argument('--config', metavar='FILE', default='config.yaml', help='The config containing all hyperparams. Only'
                                                                                 'used if no checkpoint is set.')
     parser.add_argument('--steps', type=int, default=1000, help='Max number of steps.')
+    parser.add_argument('--output', type=str, default=None, help='[string/path]')
 
     # name of subcommand goes to args.vocoder
     subparsers = parser.add_subparsers(dest='vocoder')
@@ -73,7 +74,7 @@ if __name__ == '__main__':
         voc_model, voc_config = load_wavernn(args.voc_checkpoint)
         voc_dsp = DSP.from_config(voc_config)
 
-    out_path = Path('model_outputs')
+    out_path = Path('model_outputs/tacotron')
     out_path.mkdir(parents=True, exist_ok=True)
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     tts_model.to(device)
@@ -106,7 +107,13 @@ if __name__ == '__main__':
         x = tokenizer(x)
         x = torch.as_tensor(x, dtype=torch.long, device=device).unsqueeze(0)
 
-        wav_name = f'{i}_taco_{tts_k}k_{args.vocoder}'
+        tts_name = config['tts_model_id']
+        wav_name = f'{tts_name}_{tts_k}k_{i}'
+        wavpath = None if args.output == None else args.output.format(i)
+        if wavpath == None:
+          wavpath = out_path / f'{wav_name}.wav'
+
+        print(wavpath)
 
         _, m, _ = tts_model.generate(x=x, steps=args.steps)
         if args.vocoder == 'melgan':
@@ -119,9 +126,9 @@ if __name__ == '__main__':
                                      target=args.target,
                                      overlap=args.overlap,
                                      mu_law=voc_dsp.mu_law)
-            dsp.save_wav(wav, out_path / f'{wav_name}.wav')
+            dsp.save_wav(wav, wavpath)
         elif args.vocoder == 'griffinlim':
             wav = dsp.griffinlim(m)
-            dsp.save_wav(wav, out_path / f'{wav_name}.wav')
+            dsp.save_wav(wav, wavpath)
 
     print('\n\nDone.\n')

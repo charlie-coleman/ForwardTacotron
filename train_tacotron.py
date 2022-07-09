@@ -160,6 +160,7 @@ if __name__ == '__main__':
     parser.add_argument('--force_align', '-a', action='store_true', help='Force the model to create attention alignment features')
     parser.add_argument('--extract_pitch', '-p', action='store_true', help='Extracts phoneme-pitch values only')
     parser.add_argument('--config', metavar='FILE', default='config.yaml', help='The config containing all hyperparams.')
+    parser.add_argument('--skip_align', action='store_true', help='Force the model to create attention alignment features')
 
     args = parser.parse_args()
     config = read_config(args.config)
@@ -180,8 +181,8 @@ if __name__ == '__main__':
     # Instantiate Tacotron Model
     print('\nInitialising Tacotron Model...\n')
     model = Tacotron.from_config(config).to(device)
-
-    optimizer = optim.Adam(model.parameters())
+    
+    optimizer = optim.Adam(model.parameters(), capturable=True)
     restore_checkpoint(model=model, optim=optimizer,
                        path=paths.taco_checkpoints / 'latest_model.pt',
                        device=device)
@@ -208,14 +209,15 @@ if __name__ == '__main__':
         trainer = TacoTrainer(paths, config=config, dsp=dsp)
         trainer.train(model, optimizer)
         print('Training finished, now creating Attention Alignments and Pitch Values...')
-        train_set, val_set = get_tts_datasets(paths.data, 1, model.r,
-                                              max_mel_len=None,
-                                              filter_attention=False)
-        create_align_features(model=model, train_set=train_set, val_set=val_set,
-                              paths=paths, pitch_max_freq=dsp.pitch_max_freq,
-                              silence_prob_shift=config['preprocessing']['silence_prob_shift'],
-                              silence_threshold=config['preprocessing']['silence_threshold'])
-        print('\n\nYou can now train ForwardTacotron - use python train_forward.py\n')
+        if not args.skip_align:
+          train_set, val_set = get_tts_datasets(paths.data, 1, model.r,
+                                                max_mel_len=None,
+                                                filter_attention=False)
+          create_align_features(model=model, train_set=train_set, val_set=val_set,
+                                paths=paths, pitch_max_freq=dsp.pitch_max_freq,
+                                silence_prob_shift=config['preprocessing']['silence_prob_shift'],
+                                silence_threshold=config['preprocessing']['silence_threshold'])
+          print('\n\nYou can now train ForwardTacotron - use python train_forward.py\n')
 
 
 
