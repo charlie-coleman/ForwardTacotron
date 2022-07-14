@@ -107,7 +107,7 @@ def generate(checkpoint_path, vocoder, voc_checkpoint_path = "", input_text = ""
             dsp.save_wav(wav, wavpath)
         elif vocoder == 'griffinlim':
             wav = dsp.griffinlim(m.squeeze().numpy())
-            dsp.save_wav(wav, out_path / f'{wav_name}.wav')
+            dsp.save_wav(wav, wavpath)
 
     print('\n\nDone.\n')
 
