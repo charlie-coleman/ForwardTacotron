@@ -52,3 +52,13 @@ _site/
 .sass-cache/
 .jekyll-cache/
 .jekyll-metadata
+
+api/outputs/*.wav
+api/*.db
+
+config_*.yaml
+*_data/
+*_dataset/
+model_outputs/
+checkpoints/
+ttsmodels/
