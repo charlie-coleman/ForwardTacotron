@@ -38,10 +38,19 @@ def api_output(request_id, status):
 def output_wav_path(request_id):
   return Path(args.wav_path) / f'{request_id}.wav'
 
-def generate_tts(request_id, text):
+def generate_wavernn_tts(request_id, text):
   try:
     wav_path = output_wav_path(request_id)
     wavegen.generate(text, str(wav_path))
+    ttsdb.update_request_status(request_id, RequestStatus.COMPLETED)
+  except:
+    print("Failed to generate TTS output.")
+    ttsdb.update_request_status(request_id, RequestStatus.FAILED)
+
+def generate_grifflim_tts(request_id, text):
+  try:
+    wav_path = output_wav_path(request_id)
+    griffgen.generate(text, str(wav_path))
     ttsdb.update_request_status(request_id, RequestStatus.COMPLETED)
   except:
     print("Failed to generate TTS output.")
@@ -59,7 +68,13 @@ def api_tts():
   if 'text' in flask.request.args:
     text = flask.request.args['text']
     (request_id, status) = ttsdb.add_request(text)
-    t1 = threading.Thread(target=generate_tts, args=(request_id, text))
+    t1 = threading.Thread(target=generate_grifflim_tts, args=(request_id, text))
+    t1.start()
+    return api_output(request_id, status)
+  if 'wavernn' in flask.request.args:
+    text = flask.request.args['text']
+    (request_id, status) = ttsdb.add_request(text)
+    t1 = threading.Thread(target=generate_wavernn_tts, args=(request_id, text))
     t1.start()
     return api_output(request_id, status)
   if 'request' in flask.request.args:
