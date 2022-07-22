@@ -75,12 +75,23 @@ function checkActiveRequests(text)
 }
 
 $(window).on('load', function() {
-  $("#generate-button").on('click', function() {
+  $("#generate-grifflim").on('click', function() {
     var text = $("input[type=text]#input-text").val();
 
     if (text)
     {
       var reqUrl = "https://tts.luscious.dev/api/v1/tts?text=" + encodeURIComponent(text);
+      xmlHttpRequestAsync("GET", reqUrl, startGenerateCallback);
+      $("#input-text").val("");
+    }
+  });
+
+  $("#generate-wavernn").on('click', function() {
+    var text = $("input[type=text]#input-text").val();
+
+    if (text)
+    {
+      var reqUrl = "https://tts.luscious.dev/api/v1/tts?wavernn=" + encodeURIComponent(text);
       xmlHttpRequestAsync("GET", reqUrl, startGenerateCallback);
       $("#input-text").val("");
     }

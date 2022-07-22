@@ -72,7 +72,7 @@ def api_tts():
     t1.start()
     return api_output(request_id, status)
   if 'wavernn' in flask.request.args:
-    text = flask.request.args['text']
+    text = flask.request.args['wavernn']
     (request_id, status) = ttsdb.add_request(text)
     t1 = threading.Thread(target=generate_wavernn_tts, args=(request_id, text))
     t1.start()
