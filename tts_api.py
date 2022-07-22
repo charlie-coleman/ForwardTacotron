@@ -1,4 +1,4 @@
-import gen_forward as ttsgen
+from gen_forward import ForwardGenerator
 import flask
 import uuid
 from pathlib import Path
@@ -9,14 +9,18 @@ from api.api_db import API_DB, RequestStatus
 import threading
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-p', '--path', type=str, required=True, help="path to which save wavs.")
-parser.add_argument('-d', '--db_path', type=str, default="./api/api_db", help="path to the tts db")
+parser.add_argument('-t', '--tts_path', type=str, default="./ttsmodels/forward.pt", help="path to the TTS model checkpoint.")
+parser.add_argument('-v', '--voc_path', type=str, default="./ttsmodels/wave.pt", help="path to the vocoder model checkpoint.")
+parser.add_argument('-w', '--wav_path', type=str, default="./model_outputs/", help="path to which save wavs.")
+parser.add_argument('-d', '--database_path', type=str, default="./api/api_db", help="path to the tts db")
 
 args = parser.parse_args()
 
 app = flask.Flask(__name__)
 
-ttsdb = API_DB(args.db_path)
+wavegen = ForwardGenerator(args.tts_path, "wavernn", args.voc_path)
+griffgen = ForwardGenerator(args.tts_path, "griffinlim")
+ttsdb = API_DB(args.database_path)
 
 def api_output(request_id, status):
   location = "" if status != RequestStatus.COMPLETED else f"https://luscious.dev/tts/{request_id}.wav"
@@ -29,19 +33,16 @@ def api_output(request_id, status):
   return flask.jsonify(resp)
 
 def output_wav_path(request_id):
-  return Path(args.path) / f'{request_id}.wav'
+  return Path(args.wav_path) / f'{request_id}.wav'
 
 def generate_tts(request_id, text):
-  wav_path = output_wav_path(request_id)
-  ttsgen.generate('./ttsmodels/itswill_forward_step300k.pt', 'griffinlim', output_path=str(wav_path), input_text=text)
-  ttsdb.update_request_status(request_id, RequestStatus.COMPLETED)
-  
-  # try:
-  #   ttsgen.generate('./ttsmodels/itswill_forward_step300k.pt', 'griffinlim', output_path=str(wav_path), input_text=text)
-  #   ttsdb.update_request_status(request_id, RequestStatus.COMPLETED)
-  # except:
-  #   print("Failed to generate TTS output.")
-  #   ttsdb.update_request_status(request_id, RequestStatus.FAILED)
+  try:
+    wav_path = output_wav_path(request_id)
+    wavegen.generate(text, str(wav_path))
+    ttsdb.update_request_status(request_id, RequestStatus.COMPLETED)
+  except:
+    print("Failed to generate TTS output.")
+    ttsdb.update_request_status(request_id, RequestStatus.FAILED)
 
 @app.route('/', methods=['GET'])
 def home():
