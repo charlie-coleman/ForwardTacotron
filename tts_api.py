@@ -1,5 +1,6 @@
 from gen_forward import ForwardGenerator
 import flask
+from flask_cors import CORS, cross_origin
 import uuid
 from pathlib import Path
 import os
@@ -17,6 +18,8 @@ parser.add_argument('-d', '--database_path', type=str, default="./api/api_db", h
 args = parser.parse_args()
 
 app = flask.Flask(__name__)
+cors = CORS(app)
+app.config["CORS_HEADERS"] = 'Content-Type'
 
 wavegen = ForwardGenerator(args.tts_path, "wavernn", args.voc_path)
 griffgen = ForwardGenerator(args.tts_path, "griffinlim")
@@ -45,11 +48,13 @@ def generate_tts(request_id, text):
     ttsdb.update_request_status(request_id, RequestStatus.FAILED)
 
 @app.route('/', methods=['GET'])
+@cross_origin()
 def home():
   return """<h1>LusciousLollipop's TTS API.</h1>
             <p>Try <a href="https://tts.luscious.dev/api/v1/tts?text=Test%201%2C%202%2C%203%2C%204.">this</a></p>"""
 
 @app.route('/api/v1/tts', methods=['GET'])
+@cross_origin()
 def api_tts():
   if 'text' in flask.request.args:
     text = flask.request.args['text']
@@ -66,4 +71,4 @@ def api_tts():
     return "Error."
 
 if __name__ == '__main__':
-  app.run(host="localhost", port=7373, debug=True)
+  app.run(host="0.0.0.0", port=7373, debug=False)
