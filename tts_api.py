@@ -79,9 +79,11 @@ def api_tts():
     return api_output(request_id, status)
   if 'request' in flask.request.args:
     request_id = flask.request.args['request']
-    db_entry = ttsdb.check_request(request_id)
-    print(db_entry)
-    return api_output(db_entry[1], RequestStatus(db_entry[3]))
+    try:
+      db_entry = ttsdb.check_request(request_id)
+      return api_output(db_entry[1], RequestStatus(db_entry[3]))
+    except:
+      return api_output(request_id, RequestStatus.FAILED)
   else:
     return "Error."
 
