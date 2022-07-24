@@ -48,12 +48,14 @@ function checkGenerateCallback(text)
 
   if (respJson["status"] == 1)
   {
-    $(reqStatus).text("Completed.");
+    $(reqStatus).remove()
 
-    var reqAudio = `<audio controls>
-      <source src="{0}" type="audio/wav">
-    </audio>
-    `.format(respJson["path"]);
+    var reqAudio = `<div class="req-audio-controls" id="{0}-audio-controls">
+      <audio controls>
+        <source src="{1}" type="audio/wav">
+      </audio>
+    </div>
+    `.format(respJson["id"], respJson["path"]);
     $(reqDiv).append(reqAudio);
 
     activeRequests = activeRequests.filter(function(f) {return f !== respJson["id"]});

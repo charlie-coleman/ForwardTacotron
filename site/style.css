@@ -1,7 +1,17 @@
+body, html {
+  font-family: sans-serif;
+}
+
 .req-id {
   font-weight: bold;
 }
 
 #input-text {
   width: 500;
+}
+
+.centered-div {
+  width: 100%;
+  text-align: center;
+  margin: 0 auto;
 }
