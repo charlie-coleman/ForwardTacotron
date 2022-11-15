@@ -1,4 +1,5 @@
 import time
+import math
 from typing import Tuple, Dict, Any, Union
 
 import torch
@@ -54,7 +55,7 @@ class ForwardTrainer:
         current_step = model.get_step()
         training_steps = session.max_step - current_step
         total_iters = len(session.train_set)
-        epochs = training_steps // total_iters + 1
+        epochs = math.ceil(training_steps / total_iters)
         simple_table([(f'Steps', str(training_steps // 1000) + 'k Steps'),
                       ('Batch Size', session.bs),
                       ('Learning Rate', session.lr)])

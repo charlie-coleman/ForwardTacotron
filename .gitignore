@@ -59,6 +59,8 @@ api/*.db
 config_*.yaml
 *_data/
 *_dataset/
+logs/
 model_outputs/
 checkpoints/
+previous_checkpoints/
 ttsmodels/

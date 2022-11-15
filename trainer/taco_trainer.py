@@ -1,4 +1,5 @@
 import time
+import math
 
 import torch
 import torch.nn.functional as F
@@ -54,9 +55,9 @@ class TacoTrainer:
         current_step = model.get_step()
         training_steps = session.max_step - current_step
         total_iters = len(session.train_set)
-        epochs = training_steps // total_iters + 1
+        epochs = math.ceil(training_steps / total_iters)
         model.r = session.r
-        simple_table([(f'Steps with r={session.r}', str(training_steps // 1000) + 'k Steps'),
+        simple_table([(f'Steps with r={session.r}', training_steps),
                       ('Batch Size', session.bs),
                       ('Learning Rate', session.lr),
                       ('Outputs/Step (r)', model.r)])
@@ -88,14 +89,14 @@ class TacoTrainer:
                 duration_avg.add(time.time() - start)
                 speed = 1. / duration_avg.get()
                 msg = f'| Epoch: {e}/{epochs} ({i}/{total_iters}) | Loss: {loss_avg.get():#.4} ' \
-                      f'| {speed:#.2} steps/s | Step: {k}k | '
+                      f'| {speed:#.2} steps/s | Step: {step} | '
 
-                if step % self.train_cfg['checkpoint_every'] == 0:
+                if (self.train_cfg['checkpoint_every_step'] != -1) and (step % self.train_cfg['checkpoint_every'] == 0):
                     save_checkpoint(model=model, optim=optimizer, config=self.config,
                                     path=self.paths.taco_checkpoints / f'taco_step{k}k.pt')
 
-                if step % self.train_cfg['plot_every'] == 0:
-                    self.generate_plots(model, session)
+                if (self.train_cfg['plot_every_step'] != -1) and (step % self.train_cfg['plot_every_step'] == 0):
+                   self.generate_plots(model, session)
 
                 _, att_score = attention_score(attention, batch['mel_len'])
                 att_score = torch.mean(att_score)
@@ -106,6 +107,13 @@ class TacoTrainer:
                 self.writer.add_scalar('Params/learning_rate', session.lr, model.get_step())
 
                 stream(msg)
+
+            if (self.train_cfg['checkpoint_every_epoch'] != -1) and (e % self.train_cfg['checkpoint_every_epoch'] == 0):
+                save_checkpoint(model=model, optim=optimizer, config=self.config,
+                                path=self.paths.taco_checkpoints / f'taco_step{step}.pt')
+
+            if (self.train_cfg['plot_every_epoch'] != -1) and (e % self.train_cfg['plot_every_epoch'] == 0):
+                self.generate_plots(model, session)
 
             val_loss, val_att_score = self.evaluate(model, session.val_set)
             self.writer.add_scalar('Loss/val', val_loss, model.get_step())

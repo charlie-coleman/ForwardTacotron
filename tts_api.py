@@ -13,7 +13,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-t', '--tts_path', type=str, default="./ttsmodels/forward.pt", help="path to the TTS model checkpoint.")
 parser.add_argument('-v', '--voc_path', type=str, default="./ttsmodels/wave.pt", help="path to the vocoder model checkpoint.")
 parser.add_argument('-w', '--wav_path', type=str, default="./model_outputs/", help="path to which save wavs.")
-parser.add_argument('-d', '--database_path', type=str, default="./api/api_db", help="path to the tts db")
+parser.add_argument('-d', '--database_path', type=str, default="./api/api_db.db", help="path to the tts db")
 
 args = parser.parse_args()
 
@@ -26,7 +26,7 @@ griffgen = ForwardGenerator(args.tts_path, "griffinlim")
 ttsdb = API_DB(args.database_path)
 
 def api_output(request_id, status):
-  location = "" if status != RequestStatus.COMPLETED else f"https://luscious.dev/tts/{request_id}.wav"
+  location = "" if status != RequestStatus.COMPLETED else f"https://media.luscious.dev/storage/{request_id}.wav"
   resp = {
     'id': request_id,
     'timestamp': datetime.datetime.now(),
@@ -88,4 +88,4 @@ def api_tts():
     return "Error."
 
 if __name__ == '__main__':
-  app.run(host="0.0.0.0", port=7373, debug=False)
+  app.run(host="0.0.0.0", port=8073, debug=False)

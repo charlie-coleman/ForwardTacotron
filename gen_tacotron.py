@@ -39,7 +39,7 @@ if __name__ == '__main__':
     # Parse Arguments
     parser = argparse.ArgumentParser(description='TTS Generator')
     parser.add_argument('--input_text', '-i', default=None, type=str, help='[string] Type in something here and TTS will generate it!')
-    parser.add_argument('--checkpoint', type=str, default=None, help='[string/path] path to .pt model file.')
+    parser.add_argument('--checkpoint', '-c', type=str, default=None, help='[string/path] path to .pt model file.')
     parser.add_argument('--config', metavar='FILE', default='config.yaml', help='The config containing all hyperparams. Only'
                                                                                 'used if no checkpoint is set.')
     parser.add_argument('--steps', type=int, default=1000, help='Max number of steps.')
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     wr_parser = subparsers.add_parser('wavernn')
     wr_parser.add_argument('--overlap', '-o', default=550,  type=int, help='[int] number of crossover samples')
     wr_parser.add_argument('--target', '-t', default=11_000, type=int, help='[int] number of samples in each batch index')
-    wr_parser.add_argument('--voc_checkpoint', type=str, help='[string/path] Load in different WaveRNN weights')
+    wr_parser.add_argument('--voc_checkpoint', '-v', type=str, help='[string/path] Load in different WaveRNN weights')
 
     gl_parser = subparsers.add_parser('griffinlim')
     mg_parser = subparsers.add_parser('melgan')

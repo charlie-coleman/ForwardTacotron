@@ -1,0 +1,15 @@
+models_base_path: 'ttsmodels/'
+
+forward_models_path: 'forward/'
+wavernn_models_path: 'wavernn/'
+
+output_path: 'model_outputs/'
+database_path: 'api/api_db'
+
+response_base_path: 'https://media.luscious.dev/files/'
+
+forward_models:
+  - itswill:itswill_forward_step300k.pt
+
+wavernn_models:
+  - ljspeech:ljspeech_wavernn_step575k.pt
