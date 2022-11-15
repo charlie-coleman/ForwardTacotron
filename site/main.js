@@ -2,6 +2,8 @@ var generated = 0;
 var activeRequests = [];
 var completedRequest = [];
 
+var apiUrl = "http://127.0.0.1:8073"
+
 // First, checks if it isn't implemented yet.
 if (!String.prototype.format) {
   String.prototype.format = function() {
@@ -26,6 +28,20 @@ function xmlHttpRequestAsync(method, theUrl, callback)
   }
   xmlHttp.open(method, theUrl, true);
   xmlHttp.send(null);
+}
+
+function populateSelectCallback(text)
+{
+  var respJson = JSON.parse(text);
+
+  $("#model-select").find('option').remove();
+  respJson['model_names'].forEach(function(currentVal, idx, arr)
+  {
+    $("#model-select").append($('<option>', {
+      value: currentVal,
+      text: currentVal
+    }));
+  })
 }
 
 function startGenerateCallback(text)
@@ -71,31 +87,46 @@ function checkActiveRequests(text)
 {
   for (const i in activeRequests)
   {
-    var reqUrl = "https://tts.luscious.dev/api/v1/tts?request=" + encodeURIComponent(activeRequests[i]);
+    var reqUrl = apiUrl + "/api/v1/tts?request=" + encodeURIComponent(activeRequests[i]);
     xmlHttpRequestAsync("GET", reqUrl, checkGenerateCallback);
   }
 }
 
 $(window).on('load', function() {
+  var reqUrl = apiUrl + "/api/v1/models";
+  xmlHttpRequestAsync("GET", reqUrl, populateSelectCallback);
+
+  $("form").submit(function() { return false; });
+
   $("#generate-grifflim").on('click', function() {
+    var modelName = $("#model-select").val();
     var text = $("input[type=text]#input-text").val();
 
     if (text)
     {
-      var reqUrl = "https://tts.luscious.dev/api/v1/tts?text=" + encodeURIComponent(text);
+      var reqUrl = apiUrl + "/api/v1/tts?model=" + encodeURIComponent(modelName) + "&voc=grifflim&text=" + encodeURIComponent(text);
       xmlHttpRequestAsync("GET", reqUrl, startGenerateCallback);
       $("#input-text").val("");
     }
   });
 
   $("#generate-wavernn").on('click', function() {
+    var modelName = $("#model-select").val();
     var text = $("input[type=text]#input-text").val();
 
     if (text)
     {
-      var reqUrl = "https://tts.luscious.dev/api/v1/tts?wavernn=" + encodeURIComponent(text);
+      var reqUrl = apiUrl + "/api/v1/tts?model=" + encodeURIComponent(modelName) + "&text=" + encodeURIComponent(text);
       xmlHttpRequestAsync("GET", reqUrl, startGenerateCallback);
       $("#input-text").val("");
+    }
+  });
+
+  $("#input-text").keypress(function(e)
+  {
+    if (e.keyCode == 13)
+    {
+      $("#generate-wavernn").click();
     }
   });
 

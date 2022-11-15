@@ -1,15 +1,17 @@
-models_base_path: 'ttsmodels/'
+host: "0.0.0.0"
+port: 8073
 
-forward_models_path: 'forward/'
-wavernn_models_path: 'wavernn/'
+forward_models_base_path: 'ttsmodels/forward/'
+wavernn_model_path: 'ttsmodels/wavernn/ljspeech_wave_step575k.pt'
 
-output_path: 'model_outputs/'
-database_path: 'api/api_db'
+output_path: 'model_outputs/tts_api/'
+database_path: 'api/api_db.db'
 
-response_base_path: 'https://media.luscious.dev/files/'
+api_base_url: 'http://localhost/'
+response_base_url: 'file://d:/programming/forwardtacotron/model_outputs/tts_api/'
 
 forward_models:
+  # model_name:file_name
   - itswill:itswill_forward_step300k.pt
+  - ljspeech:ljspeech_forward_step90k.pt
 
-wavernn_models:
-  - ljspeech:ljspeech_wavernn_step575k.pt

@@ -107,6 +107,32 @@ class ForwardGenerator:
         wav = self.tts_dsp.griffinlim(m.squeeze().numpy())
         self.tts_dsp.save_wav(wav, str(outpath))
 
+  def generate_grifflim(self, input_text, output_path, alpha = 1, amp = 1, overlap = 550, target = 11000):
+    # simple amplification of pitch
+    pitch_function = lambda x: x * amp
+    energy_function = lambda x: x
+
+    outpath = Path(output_path)
+    outpath.parent.mkdir(parents=True, exist_ok=True)
+
+    text = input_text
+    text = self.cleaner(text)
+    print("Cleaned text.")
+    text = self.tokenizer(text)
+    print("Tokenized text.")
+    text = torch.as_tensor(text, dtype=torch.long, device=self.device).unsqueeze(0)
+
+    print("Generating TTS input to vocoder.")
+    gen = self.tts_model.generate(x=text,
+                                  alpha=alpha,
+                                  pitch_function=pitch_function,
+                                  energy_function=energy_function)
+
+    print("Vocoding...")
+    m = gen['mel_post'].cpu()
+    wav = self.tts_dsp.griffinlim(m.squeeze().numpy())
+    self.tts_dsp.save_wav(wav, str(outpath))
+
 def generate(checkpoint_path, vocoder, voc_checkpoint_path = "", input_text = "", output_path = "", alpha = 1, amp = 1, overlap = 550, target = 11000):
   tts_model, config = load_tts_model(checkpoint_path)
   dsp = DSP.from_config(config)

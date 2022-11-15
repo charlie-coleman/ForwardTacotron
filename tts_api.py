@@ -8,25 +8,43 @@ import datetime
 import argparse
 from api.api_db import API_DB, RequestStatus
 import threading
+from utils.files import read_config
 
 parser = argparse.ArgumentParser()
-parser.add_argument('-t', '--tts_path', type=str, default="./ttsmodels/forward.pt", help="path to the TTS model checkpoint.")
-parser.add_argument('-v', '--voc_path', type=str, default="./ttsmodels/wave.pt", help="path to the vocoder model checkpoint.")
-parser.add_argument('-w', '--wav_path', type=str, default="./model_outputs/", help="path to which save wavs.")
-parser.add_argument('-d', '--database_path', type=str, default="./api/api_db.db", help="path to the tts db")
+parser.add_argument('-c', '--config', type=str, default="./api.yaml", help="path to the API config.")
 
 args = parser.parse_args()
+
+config = read_config(args.config)
+
+forward_models_base_path = Path(config['forward_models_base_path'])
+wavernn_model_path = Path(config['wavernn_model_path'])
+output_path = Path(config['output_path'])
+database_path = Path(config['database_path'])
+
+api_base_url = config['api_base_url']
+response_base_url = config['response_base_url']
 
 app = flask.Flask(__name__)
 cors = CORS(app)
 app.config["CORS_HEADERS"] = 'Content-Type'
 
-wavegen = ForwardGenerator(args.tts_path, "wavernn", args.voc_path)
-griffgen = ForwardGenerator(args.tts_path, "griffinlim")
-ttsdb = API_DB(args.database_path)
+generators = {}
+
+ttsdb = API_DB(database_path)
+
+def create_generators(config):
+  generator_dict = {}
+  for line in config['forward_models']:
+    try:
+      name, filename = line.split(":")
+    except:
+      print(f"Unable to parse line {line}")
+    generator_dict[name] = ForwardGenerator(forward_models_base_path / filename, "wavernn", wavernn_model_path)
+  return generator_dict
 
 def api_output(request_id, status):
-  location = "" if status != RequestStatus.COMPLETED else f"https://media.luscious.dev/storage/{request_id}.wav"
+  location = "" if status != RequestStatus.COMPLETED else f"{response_base_url}{request_id}.wav"
   resp = {
     'id': request_id,
     'timestamp': datetime.datetime.now(),
@@ -36,21 +54,15 @@ def api_output(request_id, status):
   return flask.jsonify(resp)
 
 def output_wav_path(request_id):
-  return Path(args.wav_path) / f'{request_id}.wav'
+  return output_path / f'{request_id}.wav'
 
-def generate_wavernn_tts(request_id, text):
+def generate_tts(request_id, generator, text, vocoder="wavernn"):
   try:
     wav_path = output_wav_path(request_id)
-    wavegen.generate(text, str(wav_path))
-    ttsdb.update_request_status(request_id, RequestStatus.COMPLETED)
-  except:
-    print("Failed to generate TTS output.")
-    ttsdb.update_request_status(request_id, RequestStatus.FAILED)
-
-def generate_grifflim_tts(request_id, text):
-  try:
-    wav_path = output_wav_path(request_id)
-    griffgen.generate(text, str(wav_path))
+    if (vocoder == "grifflim"):
+      generator.generate_grifflim(text, str(wav_path))
+    else:
+      generator.generate(text, str(wav_path))
     ttsdb.update_request_status(request_id, RequestStatus.COMPLETED)
   except:
     print("Failed to generate TTS output.")
@@ -59,22 +71,27 @@ def generate_grifflim_tts(request_id, text):
 @app.route('/', methods=['GET'])
 @cross_origin()
 def home():
-  return """<h1>LusciousLollipop's TTS API.</h1>
-            <p>Try <a href="https://tts.luscious.dev/api/v1/tts?text=Test%201%2C%202%2C%203%2C%204.">this</a></p>"""
+  return f"""<h1>LusciousLollipop's TTS API.</h1>
+             <p>Try <a href="{api_base_url}api/v1/tts?text=Test%201%2C%202%2C%203%2C%204.">this</a></p>"""
 
 @app.route('/api/v1/tts', methods=['GET'])
 @cross_origin()
 def api_tts():
-  if 'text' in flask.request.args:
-    text = flask.request.args['text']
+  if 'model' in flask.request.args:
+    model_name = flask.request.args['model']
+    text = "Test input because no sentence was provided." if 'text' not in flask.request.args else flask.request.args['text']
+    vocoder = "wavernn" if 'voc' not in flask.request.args else flask.request.args['voc']
+
+    # if the model name provided is not in our generators dictionary, return failed
+    if model_name not in generators:
+      print(f"Could not find model name {model_name} in generators.")
+      return api_output("-1", RequestStatus.FAILED)
+
+    if vocoder not in ['wavernn', 'grifflim']:
+      vocoder = 'wavernn'
+    
     (request_id, status) = ttsdb.add_request(text)
-    t1 = threading.Thread(target=generate_grifflim_tts, args=(request_id, text))
-    t1.start()
-    return api_output(request_id, status)
-  if 'wavernn' in flask.request.args:
-    text = flask.request.args['wavernn']
-    (request_id, status) = ttsdb.add_request(text)
-    t1 = threading.Thread(target=generate_wavernn_tts, args=(request_id, text))
+    t1 = threading.Thread(target=generate_tts, args=(request_id, generators[model_name], text, vocoder))
     t1.start()
     return api_output(request_id, status)
   if 'request' in flask.request.args:
@@ -87,5 +104,15 @@ def api_tts():
   else:
     return "Error."
 
+@app.route('/api/v1/models', methods=['GET'])
+@cross_origin()
+def api_models():
+  resp = {
+    'timestamp': datetime.datetime.now(),
+    'model_names': list(generators.keys())
+  }
+  return flask.jsonify(resp)
+
 if __name__ == '__main__':
-  app.run(host="0.0.0.0", port=8073, debug=False)
+  generators = create_generators(config)
+  app.run(host=config['host'], port=int(config['port']), debug=False)
