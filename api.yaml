@@ -2,6 +2,7 @@ host: "0.0.0.0"
 port: 8073
 
 forward_models_base_path: 'ttsmodels/forward/'
+tacotron_models_base_path: 'ttsmodels/tacotron/'
 wavernn_model_path: 'ttsmodels/wavernn/ljspeech_wave_step575k.pt'
 
 output_path: 'model_outputs/tts_api/'
@@ -15,3 +16,6 @@ forward_models:
   - itswill:itswill_forward_step300k.pt
   - ljspeech:ljspeech_forward_step90k.pt
 
+tacotron_models:
+  # model_name:file_name
+  - ljspeech_taco:ljspeech_taco_step10k.pt

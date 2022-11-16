@@ -1,4 +1,5 @@
 from gen_forward import ForwardGenerator
+from gen_tacotron import TacotronGenerator
 import flask
 from flask_cors import CORS, cross_origin
 import uuid
@@ -18,6 +19,7 @@ args = parser.parse_args()
 config = read_config(args.config)
 
 forward_models_base_path = Path(config['forward_models_base_path'])
+tacotron_models_base_path = Path(config['tacotron_models_base_path'])
 wavernn_model_path = Path(config['wavernn_model_path'])
 output_path = Path(config['output_path'])
 database_path = Path(config['database_path'])
@@ -41,6 +43,12 @@ def create_generators(config):
     except:
       print(f"Unable to parse line {line}")
     generator_dict[name] = ForwardGenerator(forward_models_base_path / filename, "wavernn", wavernn_model_path)
+  for line in config['tacotron_models']:
+    try:
+      name, filename = line.split(":")
+    except:
+      print(f"Unable to parse line {line}")
+    generator_dict[name] = TacotronGenerator(tacotron_models_base_path / filename, "wavernn", wavernn_model_path)
   return generator_dict
 
 def api_output(request_id, status):
