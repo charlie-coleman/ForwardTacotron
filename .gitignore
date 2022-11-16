@@ -56,7 +56,8 @@ _site/
 api/outputs/*.wav
 api/*.db
 
-config_*.yaml
+*.yaml
+!example_*.yaml
 *_data/
 *_dataset/
 logs/

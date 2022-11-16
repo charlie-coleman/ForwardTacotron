@@ -1,5 +1,5 @@
 host: "0.0.0.0"
-port: 8073
+port: 8080
 
 forward_models_base_path: 'ttsmodels/forward/'
 tacotron_models_base_path: 'ttsmodels/tacotron/'
@@ -9,11 +9,10 @@ output_path: 'model_outputs/tts_api/'
 database_path: 'api/api_db.db'
 
 api_base_url: 'http://localhost/'
-response_base_url: 'file://d:/programming/forwardtacotron/model_outputs/tts_api/'
+response_base_url: 'http://localhost/'
 
 forward_models:
   # model_name:file_name
-  - itswill:itswill_forward_step300k.pt
   - ljspeech:ljspeech_forward_step90k.pt
 
 tacotron_models:
